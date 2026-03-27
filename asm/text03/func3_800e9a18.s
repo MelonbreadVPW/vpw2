@@ -1,4 +1,31 @@
 # related to big messages?
+#
+# Big-message stream decoder + per-frame interpolator.
+# ---------------------------------------------------
+# Consumes command words from bss3_8015D780 and updates per-slot fields used by
+# rendering/interpolation. Command stream selection is done by higher-level code
+# (e.g. seg003 func3_800EE954), but this routine performs the actual decode.
+#
+# Stream + support globals:
+#   bss3_8015D780 : active command pointer (u32 words)
+#   bss3_8015D784 : aux offset/index used with some command forms
+#   bss3_8015D2C4 : per-slot object pointers; object->flags bit 0x80 gates slot
+#
+# Per-slot decoded fields (stride 0x24 for these packed arrays):
+#   +0x00 bss3_8015D6F6 u8   countdown / remaining interpolation steps
+#   +0x01 bss3_8015D6F7 u8   target opacity
+#   +0x02 bss3_8015D6F8 s16  target X
+#   +0x04 bss3_8015D6FA s16  target Y
+#   +0x06 bss3_8015D6FC f32  current opacity
+#   +0x0A bss3_8015D700 f32  current X
+#   +0x0E bss3_8015D704 f32  current Y
+#   +0x12 bss3_8015D708 f32  current X scale-ish value
+#   +0x16 bss3_8015D70C f32  current Y scale-ish value
+#   +0x1A bss3_8015D6F0 u32  cached command word for active slot
+#   +0x20 bss3_8015D710 u8   R
+#   +0x21 bss3_8015D711 u8   G
+#   +0x22 bss3_8015D712 u8   B
+#
 
 glabel func3_800E9A18
 /* 0E40C8 800E9A18 27BDFFB0 */  addiu $sp, $sp, -0x50
@@ -25,6 +52,7 @@ glabel func3_800E9A18
 
 .L3_800E9A6C:
 /* 0E411C 800E9A6C 92430000 */  lbu   $v1, ($s2)
+/* if slot countdown is 0, skip interpolation for this slot */
 /* 0E4120 800E9A70 506000B3 */  beql  $v1, $zero, .L3_800E9D40
 /* 0E4124 800E9A74 26520024 */   addiu $s2, $s2, 0x24
 
@@ -254,6 +282,7 @@ glabel func3_800E9A18
 /* 0E445C 800E9DAC 30420007 */  andi  $v0, $v0, 7
 /* 0E4460 800E9DB0 3C018016 */  lui   $at, %hi(bss3_8015D6F6)
 /* 0E4464 800E9DB4 00250821 */  addu  $at, $at, $a1
+/* low decode: countdown/step count nibble */
 /* 0E4468 800E9DB8 A022D6F6 */  sb    $v0, %lo(bss3_8015D6F6)($at)
 /* 0E446C 800E9DBC 10400006 */  beqz  $v0, .L3_800E9DD8
 /* 0E4470 800E9DC0 2442FFFF */   addiu $v0, $v0, -1
@@ -270,6 +299,7 @@ glabel func3_800E9A18
 /* 0E4490 800E9DE0 8C420000 */  lw    $v0, ($v0)
 /* 0E4494 800E9DE4 3C018016 */  lui   $at, %hi(bss3_8015D6F7)
 /* 0E4498 800E9DE8 00250821 */  addu  $at, $at, $a1
+/* target opacity */
 /* 0E449C 800E9DEC A022D6F7 */  sb    $v0, %lo(bss3_8015D6F7)($at)
 /* 0E44A0 800E9DF0 3C038016 */  lui   $v1, %hi(bss3_8015D780) # $v1, 0x8016
 /* 0E44A4 800E9DF4 8C63D780 */  lw    $v1, %lo(bss3_8015D780)($v1)
@@ -277,10 +307,12 @@ glabel func3_800E9A18
 /* 0E44AC 800E9DFC 00021040 */  sll   $v0, $v0, 1
 /* 0E44B0 800E9E00 3C018016 */  lui   $at, %hi(bss3_8015D6F8)
 /* 0E44B4 800E9E04 00250821 */  addu  $at, $at, $a1
+/* target X */
 /* 0E44B8 800E9E08 A422D6F8 */  sh    $v0, %lo(bss3_8015D6F8)($at)
 /* 0E44BC 800E9E0C 90620002 */  lbu   $v0, 2($v1)
 /* 0E44C0 800E9E10 3C018016 */  lui   $at, %hi(bss3_8015D6FA)
 /* 0E44C4 800E9E14 00250821 */  addu  $at, $at, $a1
+/* target Y */
 /* 0E44C8 800E9E18 A422D6FA */  sh    $v0, %lo(bss3_8015D6FA)($at)
 /* 0E44CC 800E9E1C 8C620000 */  lw    $v0, ($v1)
 /* 0E44D0 800E9E20 3C031000 */  lui   $v1, 0x1000
@@ -313,6 +345,7 @@ glabel func3_800E9A18
 /* 0E4524 800E9E74 3C028016 */  lui   $v0, %hi(bss3_8015D6F6)
 /* 0E4528 800E9E78 00451021 */  addu  $v0, $v0, $a1
 /* 0E452C 800E9E7C 9042D6F6 */  lbu   $v0, %lo(bss3_8015D6F6)($v0)
+/* when a new command starts (countdown==0), latch start values from targets */
 /* 0E4530 800E9E80 1440001C */  bnez  $v0, .L3_800E9EF4
 /* 0E4534 800E9E84 00000000 */   nop   
 
@@ -353,6 +386,7 @@ glabel func3_800E9A18
 /* 0E45B8 800E9F08 AC22D780 */  sw    $v0, %lo(bss3_8015D780)($at)
 /* 0E45BC 800E9F0C 3C018016 */  lui   $at, %hi(bss3_8015D6F0)
 /* 0E45C0 800E9F10 00250821 */  addu  $at, $at, $a1
+/* store raw command for this slot */
 /* 0E45C4 800E9F14 0803A80B */  j     .L3_800EA02C
 /* 0E45C8 800E9F18 AC23D6F0 */   sw    $v1, %lo(bss3_8015D6F0)($at)
 
@@ -391,6 +425,7 @@ glabel func3_800E9A18
 /* 0E4630 800E9F80 8CA5D2C4 */  lw    $a1, %lo(bss3_8015D2C4)($a1)
 /* 0E4634 800E9F84 8CA30000 */  lw    $v1, ($a1)
 /* 0E4638 800E9F88 30620080 */  andi  $v0, $v1, 0x80
+/* slot object hidden? if so, don't dispatch decoded command */
 /* 0E463C 800E9F8C 10400024 */  beqz  $v0, .L3_800EA020
 /* 0E4640 800E9F90 00D11021 */   addu  $v0, $a2, $s1
 
@@ -399,6 +434,7 @@ glabel func3_800E9A18
 /* 0E464C 800E9F9C 00022402 */  srl   $a0, $v0, 0x10
 /* 0E4650 800E9FA0 3C018016 */  lui   $at, %hi(bss3_8015D6F4)
 /* 0E4654 800E9FA4 00260821 */  addu  $at, $at, $a2
+/* subtype/index/timer-ish field extracted from command payload */
 /* 0E4658 800E9FA8 A424D6F4 */  sh    $a0, %lo(bss3_8015D6F4)($at)
 /* 0E465C 800E9FAC 8CE20000 */  lw    $v0, ($a3)
 /* 0E4660 800E9FB0 3C030800 */  lui   $v1, 0x800
@@ -411,6 +447,7 @@ glabel func3_800E9A18
 /* 0E4678 800E9FC8 00821021 */  addu  $v0, $a0, $v0
 /* 0E467C 800E9FCC 3C018016 */  lui   $at, %hi(bss3_8015D6F4)
 /* 0E4680 800E9FD0 00260821 */  addu  $at, $at, $a2
+/* alt command form adds global D784 offset */
 /* 0E4684 800E9FD4 A422D6F4 */  sh    $v0, %lo(bss3_8015D6F4)($at)
 /* 0E4688 800E9FD8 00112040 */  sll   $a0, $s1, 1
 
