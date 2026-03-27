@@ -1,4 +1,25 @@
 glabel func3_800E97CC
+#
+# Big-message runtime bootstrap / reset.
+# -------------------------------------
+# Initializes 4 per-slot records and render objects used by the center-screen
+# "big message" system (Fight/TKO/count/rope break/etc).
+#
+# Known state blocks:
+#   bss3_8015D620 : slot record array (stride 0x34, one record per slot; 4 slots)
+#   bss3_8015D6F0 : per-slot cached command word from stream
+#   bss3_8015D6F4 : per-slot subtype/index/timer-ish short (updated later by decoder)
+#   bss3_8015D6F6 : per-slot countdown / interpolation steps remaining (u8)
+#   bss3_8015D6F7 : per-slot target opacity (u8)
+#   bss3_8015D6F8 : per-slot target horizontal position (s16)
+#   bss3_8015D6FA : per-slot target vertical position (s16)
+#   bss3_8015D6FC : per-slot current opacity (float)
+#   bss3_8015D700 : per-slot current horizontal position (float)
+#   bss3_8015D704 : per-slot current vertical position (float)
+#   bss3_8015D708 : per-slot current horizontal scale-ish float
+#   bss3_8015D70C : per-slot current vertical scale-ish float
+#   bss3_8015D710..D712 : per-slot RGB color bytes
+#
 /* 0E3E7C 800E97CC 27BDFF28 */  addiu $sp, $sp, -0xd8
 /* 0E3E80 800E97D0 F7B400C8 */  sdc1  $f20, 0xc8($sp)
 /* 0E3E84 800E97D4 3C014370 */  li    $at, 0x43700000 # 240.000000
@@ -34,28 +55,36 @@ glabel func3_800E97CC
 /* 0E3EF4 800E9844 240200F0 */  li    $v0, 240
 /* 0E3EF8 800E9848 3C018016 */  lui   $at, %hi(bss3_8015D6F8)
 /* 0E3EFC 800E984C 00310821 */  addu  $at, $at, $s1
+/* default target X = 240 */
 /* 0E3F00 800E9850 A422D6F8 */  sh    $v0, %lo(bss3_8015D6F8)($at)
 /* 0E3F04 800E9854 24020078 */  li    $v0, 120
 /* 0E3F08 800E9858 3C018016 */  lui   $at, %hi(bss3_8015D6F6)
 /* 0E3F0C 800E985C 00310821 */  addu  $at, $at, $s1
+/* countdown / steps remaining = 0 (idle until decoder loads command) */
 /* 0E3F10 800E9860 A020D6F6 */  sb    $zero, %lo(bss3_8015D6F6)($at)
 /* 0E3F14 800E9864 3C018016 */  lui   $at, %hi(bss3_8015D6F4)
 /* 0E3F18 800E9868 00310821 */  addu  $at, $at, $s1
+/* per-slot subtype/index/timer field reset */
 /* 0E3F1C 800E986C A420D6F4 */  sh    $zero, %lo(bss3_8015D6F4)($at)
 /* 0E3F20 800E9870 3C018016 */  lui   $at, %hi(bss3_8015D6FC)
 /* 0E3F24 800E9874 00310821 */  addu  $at, $at, $s1
+/* current opacity */
 /* 0E3F28 800E9878 AC20D6FC */  sw    $zero, %lo(bss3_8015D6FC)($at)
 /* 0E3F2C 800E987C 3C018016 */  lui   $at, %hi(bss3_8015D700)
 /* 0E3F30 800E9880 00310821 */  addu  $at, $at, $s1
+/* current X = 240.0 */
 /* 0E3F34 800E9884 E434D700 */  swc1  $f20, %lo(bss3_8015D700)($at)
 /* 0E3F38 800E9888 3C018016 */  lui   $at, %hi(bss3_8015D6F7)
 /* 0E3F3C 800E988C 00310821 */  addu  $at, $at, $s1
+/* target opacity */
 /* 0E3F40 800E9890 A020D6F7 */  sb    $zero, %lo(bss3_8015D6F7)($at)
 /* 0E3F44 800E9894 3C018016 */  lui   $at, %hi(bss3_8015D6FA)
 /* 0E3F48 800E9898 00310821 */  addu  $at, $at, $s1
+/* default target Y = 120 */
 /* 0E3F4C 800E989C A422D6FA */  sh    $v0, %lo(bss3_8015D6FA)($at)
 /* 0E3F50 800E98A0 3C018016 */  lui   $at, %hi(bss3_8015D710)
 /* 0E3F54 800E98A4 00310821 */  addu  $at, $at, $s1
+/* RGB = 255,255,255 (white) */
 /* 0E3F58 800E98A8 A035D710 */  sb    $s5, %lo(bss3_8015D710)($at)
 /* 0E3F5C 800E98AC 3C018016 */  lui   $at, %hi(bss3_8015D711)
 /* 0E3F60 800E98B0 00310821 */  addu  $at, $at, $s1
