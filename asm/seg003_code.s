@@ -2755,18 +2755,23 @@ func3_800EEF44:
 
 /*----------------------------------------------------------------------------*/
 # Params:
-# $a0 -
+# $a0 - match result/finish flags
 
+# Selects the post-match big-message/referee animation from match-result flags.
+# Queues a message index in bss3_8015AFEC for the overlay update loop and
+# starts the matching referee animation state via func3_800EF698.
 func3_800EF294:
 /* 0E9944 800EF294 3C028017 */  lui   $v0, %hi(bss3_8016C010) # $v0, 0x8017
 /* 0E9948 800EF298 8442C010 */  lh    $v0, %lo(bss3_8016C010)($v0)
 /* 0E994C 800EF29C 27BDFFE8 */  addiu $sp, $sp, -0x18
-/* 0E9950 800EF2A0 14400041 */  bnez  $v0, .L3_800EF3A8
+/* 0E9950 800EF2A0 14400041 */  bnez  $v0, .L3_800EF3A8 # result overlay/referee flow already locked
 /* 0E9954 800EF2A4 AFBF0010 */   sw    $ra, 0x10($sp)
 
+# delay before the queued finish/result big-message is installed
 /* 0E9958 800EF2A8 2402001E */  li    $v0, 30
 /* 0E995C 800EF2AC 3C018016 */  lui   $at, %hi(bss3_8015AFEE) # $at, 0x8016
 /* 0E9960 800EF2B0 A422AFEE */  sh    $v0, %lo(bss3_8015AFEE)($at)
+# time up -> BigMessage_TimeUp, referee state 10
 /* 0E9964 800EF2B4 30824000 */  andi  $v0, $a0, 0x4000
 /* 0E9968 800EF2B8 10400003 */  beqz  $v0, .L3_800EF2C8
 /* 0E996C 800EF2BC 2403FFFF */   li    $v1, -1
@@ -2774,12 +2779,14 @@ func3_800EF294:
 /* 0E9970 800EF2C0 0803BCD7 */  j     .L3_800EF35C
 /* 0E9974 800EF2C4 24020004 */   li    $v0, 4
 
+# ring-out-related flags -> BigMessage_RingOut, referee state 7
 .L3_800EF2C8:
 /* 0E9978 800EF2C8 3C02000D */  lui   $v0, 0xd
 /* 0E997C 800EF2CC 00821024 */  and   $v0, $a0, $v0
 /* 0E9980 800EF2D0 14400005 */  bnez  $v0, .L3_800EF2E8
 /* 0E9984 800EF2D4 24020002 */   li    $v0, 2
 
+# double-ring-out flag -> BigMessage_DoubleRingOut, referee state 7
 /* 0E9988 800EF2D8 3C020002 */  lui   $v0, 2
 /* 0E998C 800EF2DC 00821024 */  and   $v0, $a0, $v0
 /* 0E9990 800EF2E0 10400005 */  beqz  $v0, .L3_800EF2F8
@@ -2791,6 +2798,7 @@ func3_800EF294:
 /* 0E99A0 800EF2F0 0803BCDA */  j     .L3_800EF368
 /* 0E99A4 800EF2F4 24030007 */   li    $v1, 7
 
+# draw flag -> BigMessage_Draw, no message delay, referee state 10
 .L3_800EF2F8:
 /* 0E99A8 800EF2F8 30820800 */  andi  $v0, $a0, 0x800
 /* 0E99AC 800EF2FC 10400007 */  beqz  $v0, .L3_800EF31C
@@ -2803,6 +2811,7 @@ func3_800EF294:
 /* 0E99C4 800EF314 0803BCDA */  j     .L3_800EF368
 /* 0E99C8 800EF318 2403000A */   li    $v1, 10
 
+# three-count fall flag -> BigMessage_ThreeCountFall, referee state 3
 .L3_800EF31C:
 /* 0E99CC 800EF31C 30822000 */  andi  $v0, $a0, 0x2000
 /* 0E99D0 800EF320 10400005 */  beqz  $v0, .L3_800EF338
@@ -2813,6 +2822,7 @@ func3_800EF294:
 /* 0E99E0 800EF330 0803BCDA */  j     .L3_800EF368
 /* 0E99E4 800EF334 24030003 */   li    $v1, 3
 
+# give-up/submission flag -> BigMessage_GiveUp, referee state 5
 .L3_800EF338:
 /* 0E99E8 800EF338 10400005 */  beqz  $v0, .L3_800EF350
 /* 0E99EC 800EF33C 24020001 */   li    $v0, 1
@@ -2822,6 +2832,7 @@ func3_800EF294:
 /* 0E99F8 800EF348 0803BCDA */  j     .L3_800EF368
 /* 0E99FC 800EF34C 24030005 */   li    $v1, 5
 
+# TKO flag -> BigMessage_TKO, referee state 10
 .L3_800EF350:
 /* 0E9A00 800EF350 30828000 */  andi  $v0, $a0, 0x8000
 /* 0E9A04 800EF354 10400004 */  beqz  $v0, .L3_800EF368
@@ -2832,18 +2843,20 @@ func3_800EF294:
 /* 0E9A10 800EF360 A422AFEC */  sh    $v0, %lo(bss3_8015AFEC)($at)
 /* 0E9A14 800EF364 2403000A */  li    $v1, 10
 
+# v1 holds referee animation state; -1 means no state change
 .L3_800EF368:
 /* 0E9A18 800EF368 00031400 */  sll   $v0, $v1, 0x10
 /* 0E9A1C 800EF36C 00022403 */  sra   $a0, $v0, 0x10
 /* 0E9A20 800EF370 04800003 */  bltz  $a0, .L3_800EF380
 /* 0E9A24 800EF374 00000000 */   nop   
 
-/* 0E9A28 800EF378 0C03BDA6 */  jal   func3_800EF698
+/* 0E9A28 800EF378 0C03BDA6 */  jal   func3_800EF698 # start/maintain selected referee result animation
 /* 0E9A2C 800EF37C 00002821 */   addu  $a1, $zero, $zero
 
 .L3_800EF380:
 /* 0E9A30 800EF380 3C02800A */  lui   $v0, %hi(bssMain_8009D5DC) # $v0, 0x800a
 /* 0E9A34 800EF384 8C42D5DC */  lw    $v0, %lo(bssMain_8009D5DC)($v0)
+# special result flag locks the overlay/referee flow from further updates
 /* 0E9A38 800EF388 3C030010 */  lui   $v1, 0x10
 /* 0E9A3C 800EF38C 00431024 */  and   $v0, $v0, $v1
 /* 0E9A40 800EF390 10400005 */  beqz  $v0, .L3_800EF3A8
@@ -146171,10 +146184,10 @@ bss3_8015AFE8: .short 0
 # 8015AFEA [h] cached centered one-digit value
 bss3_8015AFEA: .short 0
 
-# 8015AFEC [h]
+# 8015AFEC [h] queued post-match big-message index (0..6, -1 = none)
 bss3_8015AFEC: .short 0
 
-# 8015AFEE [h]
+# 8015AFEE [h] delay timer before queued post-match big-message starts
 bss3_8015AFEE: .short 0
 
 # 8015AFF0 [w?]
