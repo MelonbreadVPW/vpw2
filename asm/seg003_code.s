@@ -2878,19 +2878,24 @@ func3_800EF3B4:
 /* 0E9A68 800EF3B8 00000000 */   nop   
 
 /*----------------------------------------------------------------------------*/
+# Updates and draws the referee sprite each frame.
+# Advances the current referee animation frame timer/index, handles animation
+# loop/end markers, slides the referee sprite in/out, toggles the hide bit,
+# and submits the current frame to the sprite renderer.
 func3_800EF3BC:
 /* 0E9A6C 800EF3BC 3C028016 */  lui   $v0, %hi(bss3_80159C8A) # $v0, 0x8016
 /* 0E9A70 800EF3C0 94429C8A */  lhu   $v0, %lo(bss3_80159C8A)($v0)
 /* 0E9A74 800EF3C4 27BDFFC8 */  addiu $sp, $sp, -0x38
-/* 0E9A78 800EF3C8 30420080 */  andi  $v0, $v0, 0x80
+/* 0E9A78 800EF3C8 30420080 */  andi  $v0, $v0, 0x80 # hidden/inactive flag
 /* 0E9A7C 800EF3CC 10400005 */  beqz  $v0, .L3_800EF3E4
 /* 0E9A80 800EF3D0 AFBF0030 */   sw    $ra, 0x30($sp)
 
 /* 0E9A84 800EF3D4 3C028016 */  lui   $v0, %hi(bss3_80159C8E) # $v0, 0x8016
 /* 0E9A88 800EF3D8 84429C8E */  lh    $v0, %lo(bss3_80159C8E)($v0)
-/* 0E9A8C 800EF3DC 184000AB */  blez  $v0, .L3_800EF68C
+/* 0E9A8C 800EF3DC 184000AB */  blez  $v0, .L3_800EF68C # hidden and fully slid out
 /* 0E9A90 800EF3E0 00000000 */   nop   
 
+# Tick current referee animation frame timer.
 .L3_800EF3E4:
 /* 0E9A94 800EF3E4 3C028016 */  lui   $v0, %hi(bss3_80159C8C) # $v0, 0x8016
 /* 0E9A98 800EF3E8 80429C8C */  lb    $v0, %lo(bss3_80159C8C)($v0)
@@ -2901,9 +2906,10 @@ func3_800EF3BC:
 /* 0E9AA8 800EF3F8 3C018016 */  lui   $at, %hi(bss3_80159C8C) # $at, 0x8016
 /* 0E9AAC 800EF3FC A0229C8C */  sb    $v0, %lo(bss3_80159C8C)($at)
 /* 0E9AB0 800EF400 00021600 */  sll   $v0, $v0, 0x18
-/* 0E9AB4 800EF404 14400039 */  bnez  $v0, .L3_800EF4EC
+/* 0E9AB4 800EF404 14400039 */  bnez  $v0, .L3_800EF4EC # keep drawing current frame until timer expires
 /* 0E9AB8 800EF408 00000000 */   nop   
 
+# Timer expired: advance to next frame in current referee animation.
 /* 0E9ABC 800EF40C 3C038016 */  lui   $v1, %hi(bss3_80159C8D) # $v1, 0x8016
 /* 0E9AC0 800EF410 90639C8D */  lbu   $v1, %lo(bss3_80159C8D)($v1)
 /* 0E9AC4 800EF414 3C048016 */  lui   $a0, %hi(bss3_80159C92) # $a0, 0x8016
@@ -2921,7 +2927,7 @@ func3_800EF3BC:
 /* 0E9AF4 800EF444 3C018016 */  lui   $at, %hi(bss3_80159C8D) # $at, 0x8016
 /* 0E9AF8 800EF448 A0239C8D */  sb    $v1, %lo(bss3_80159C8D)($at)
 /* 0E9AFC 800EF44C 2402FFFF */  li    $v0, -1
-/* 0E9B00 800EF450 14820003 */  bne   $a0, $v0, .L3_800EF460
+/* 0E9B00 800EF450 14820003 */  bne   $a0, $v0, .L3_800EF460 # -1 frame marker loops back to frame 0
 /* 0E9B04 800EF454 00000000 */   nop   
 
 /* 0E9B08 800EF458 3C018016 */  lui   $at, %hi(bss3_80159C8D) # $at, 0x8016
@@ -2934,7 +2940,7 @@ func3_800EF3BC:
 /* 0E9B1C 800EF46C 00061840 */  sll   $v1, $a2, 1
 /* 0E9B20 800EF470 00621821 */  addu  $v1, $v1, $v0
 /* 0E9B24 800EF474 84620000 */  lh    $v0, ($v1)
-/* 0E9B28 800EF478 1040001A */  beqz  $v0, .L3_800EF4E4
+/* 0E9B28 800EF478 1040001A */  beqz  $v0, .L3_800EF4E4 # 0 frame marker ends the animation
 /* 0E9B2C 800EF47C 00401821 */   addu  $v1, $v0, $zero
 
 /* 0E9B30 800EF480 24620058 */  addiu $v0, $v1, 0x58
@@ -2946,11 +2952,13 @@ func3_800EF3BC:
 /* 0E9B48 800EF498 8C841FE8 */  lw    $a0, %lo(tbl_RefereeFrameTime_80151FE8)($a0)
 /* 0E9B4C 800EF49C 00621821 */  addu  $v1, $v1, $v0
 /* 0E9B50 800EF4A0 00031843 */  sra   $v1, $v1, 1
+# Convert referee frame file ID to the loaded frame/texture metadata index.
 /* 0E9B54 800EF4A4 3C018016 */  lui   $at, %hi(bss3_80159C93) # $at, 0x8016
 /* 0E9B58 800EF4A8 A0239C93 */  sb    $v1, %lo(bss3_80159C93)($at)
 /* 0E9B5C 800EF4AC 00862021 */  addu  $a0, $a0, $a2
 /* 0E9B60 800EF4B0 90820000 */  lbu   $v0, ($a0)
 /* 0E9B64 800EF4B4 28630005 */  slti  $v1, $v1, 5
+# Store duration for the next animation frame.
 /* 0E9B68 800EF4B8 3C018016 */  lui   $at, %hi(bss3_80159C8C) # $at, 0x8016
 /* 0E9B6C 800EF4BC A0229C8C */  sb    $v0, %lo(bss3_80159C8C)($at)
 /* 0E9B70 800EF4C0 14600005 */  bnez  $v1, .L3_800EF4D8
@@ -2967,9 +2975,10 @@ func3_800EF3BC:
 /* 0E9B90 800EF4E0 A4229C90 */   sh    $v0, %lo(bss3_80159C90)($at)
 
 .L3_800EF4E4:
-/* 0E9B94 800EF4E4 0C03BEEB */  jal   func3_800EFBAC
+/* 0E9B94 800EF4E4 0C03BEEB */  jal   func3_800EFBAC # reset/clear finished referee animation
 /* 0E9B98 800EF4E8 00000000 */   nop   
 
+# Hide/show the referee object based on global display state.
 .L3_800EF4EC:
 /* 0E9B9C 800EF4EC 0C050AE8 */  jal   func3_80142BA0
 /* 0E9BA0 800EF4F0 00000000 */   nop   
@@ -2980,7 +2989,7 @@ func3_800EF3BC:
 /* 0E9BAC 800EF4FC 3C038016 */  lui   $v1, %hi(bss3_80159B24) # $v1, 0x8016
 /* 0E9BB0 800EF500 8C639B24 */  lw    $v1, %lo(bss3_80159B24)($v1)
 /* 0E9BB4 800EF504 8C620000 */  lw    $v0, ($v1)
-/* 0E9BB8 800EF508 34420080 */  ori   $v0, $v0, 0x80
+/* 0E9BB8 800EF508 34420080 */  ori   $v0, $v0, 0x80 # set hide bit
 /* 0E9BBC 800EF50C 0803BD4A */  j     .L3_800EF528
 /* 0E9BC0 800EF510 AC620000 */   sw    $v0, ($v1)
 
@@ -2988,14 +2997,14 @@ func3_800EF3BC:
 /* 0E9BC4 800EF514 3C028016 */  lui   $v0, %hi(bss3_80159B24) # $v0, 0x8016
 /* 0E9BC8 800EF518 8C429B24 */  lw    $v0, %lo(bss3_80159B24)($v0)
 /* 0E9BCC 800EF51C 8C430000 */  lw    $v1, ($v0)
-/* 0E9BD0 800EF520 00641824 */  and   $v1, $v1, $a0
+/* 0E9BD0 800EF520 00641824 */  and   $v1, $v1, $a0 # clear hide bit
 /* 0E9BD4 800EF524 AC430000 */  sw    $v1, ($v0)
 
 .L3_800EF528:
 /* 0E9BD8 800EF528 3C028016 */  lui   $v0, %hi(bss3_80159C92) # $v0, 0x8016
 /* 0E9BDC 800EF52C 80429C92 */  lb    $v0, %lo(bss3_80159C92)($v0)
 /* 0E9BE0 800EF530 10400012 */  beqz  $v0, .L3_800EF57C
-/* 0E9BE4 800EF534 24030080 */   li    $v1, 128
+/* 0E9BE4 800EF534 24030080 */   li    $v1, 128 # slide-in target X
 
 /* 0E9BE8 800EF538 3C028016 */  lui   $v0, %hi(bss3_80159C8E) # $v0, 0x8016
 /* 0E9BEC 800EF53C 84429C8E */  lh    $v0, %lo(bss3_80159C8E)($v0)
@@ -3008,7 +3017,7 @@ func3_800EF3BC:
 /* 0E9C04 800EF554 000317C2 */  srl   $v0, $v1, 0x1f
 /* 0E9C08 800EF558 00621021 */  addu  $v0, $v1, $v0
 /* 0E9C0C 800EF55C 00021043 */  sra   $v0, $v0, 1
-/* 0E9C10 800EF560 00821021 */  addu  $v0, $a0, $v0
+/* 0E9C10 800EF560 00821021 */  addu  $v0, $a0, $v0 # ease halfway toward target X
 /* 0E9C14 800EF564 3C018016 */  lui   $at, %hi(bss3_80159C8E) # $at, 0x8016
 /* 0E9C18 800EF568 0803BD72 */  j     .L3_800EF5C8
 /* 0E9C1C 800EF56C A4229C8E */   sh    $v0, %lo(bss3_80159C8E)($at)
@@ -3018,6 +3027,7 @@ func3_800EF3BC:
 /* 0E9C24 800EF574 0803BD72 */  j     .L3_800EF5C8
 /* 0E9C28 800EF578 A4229C8E */   sh    $v0, %lo(bss3_80159C8E)($at)
 
+# No active referee animation: slide out, then mark hidden.
 .L3_800EF57C:
 /* 0E9C2C 800EF57C 3C028016 */  lui   $v0, %hi(bss3_80159C8E) # $v0, 0x8016
 /* 0E9C30 800EF580 84429C8E */  lh    $v0, %lo(bss3_80159C8E)($v0)
@@ -3026,7 +3036,7 @@ func3_800EF3BC:
 /* 0E9C3C 800EF58C 14400005 */  bnez  $v0, .L3_800EF5A4
 /* 0E9C40 800EF590 24020080 */   li    $v0, 128
 
-/* 0E9C44 800EF594 2462FFEC */  addiu $v0, $v1, -0x14
+/* 0E9C44 800EF594 2462FFEC */  addiu $v0, $v1, -0x14 # slide out by 20 px/frame
 /* 0E9C48 800EF598 3C018016 */  lui   $at, %hi(bss3_80159C8E) # $at, 0x8016
 /* 0E9C4C 800EF59C 0803BD72 */  j     .L3_800EF5C8
 /* 0E9C50 800EF5A0 A4229C8E */   sh    $v0, %lo(bss3_80159C8E)($at)
@@ -3037,11 +3047,13 @@ func3_800EF3BC:
 /* 0E9C5C 800EF5AC 8C830000 */  lw    $v1, ($a0)
 /* 0E9C60 800EF5B0 3C018016 */  lui   $at, %hi(bss3_80159C8E) # $at, 0x8016
 /* 0E9C64 800EF5B4 A4209C8E */  sh    $zero, %lo(bss3_80159C8E)($at)
+# Store hidden flag once slide-out is complete.
 /* 0E9C68 800EF5B8 3C018016 */  lui   $at, %hi(bss3_80159C8A) # $at, 0x8016
 /* 0E9C6C 800EF5BC A4229C8A */  sh    $v0, %lo(bss3_80159C8A)($at)
-/* 0E9C70 800EF5C0 34630080 */  ori   $v1, $v1, 0x80
+/* 0E9C70 800EF5C0 34630080 */  ori   $v1, $v1, 0x80 # hide object after slide-out
 /* 0E9C74 800EF5C4 AC830000 */  sw    $v1, ($a0)
 
+# Cycle referee draw buffers modulo 3 and submit current frame.
 .L3_800EF5C8:
 /* 0E9C78 800EF5C8 3C028016 */  lui   $v0, %hi(bss3_80159C88) # $v0, 0x8016
 /* 0E9C7C 800EF5CC 94429C88 */  lhu   $v0, %lo(bss3_80159C88)($v0)
@@ -3051,7 +3063,7 @@ func3_800EF3BC:
 /* 0E9C8C 800EF5DC 00041C00 */  sll   $v1, $a0, 0x10
 /* 0E9C90 800EF5E0 00033403 */  sra   $a2, $v1, 0x10
 /* 0E9C94 800EF5E4 00021400 */  sll   $v0, $v0, 0x10
-/* 0E9C98 800EF5E8 00C50018 */  mult  $a2, $a1
+/* 0E9C98 800EF5E8 00C50018 */  mult  $a2, $a1 # modulo 3 using magic constant
 /* 0E9C9C 800EF5EC 00021383 */  sra   $v0, $v0, 0xe
 /* 0E9CA0 800EF5F0 3C018016 */  lui   $at, %hi(bss3_80159BEC)
 /* 0E9CA4 800EF5F4 00220821 */  addu  $at, $at, $v0
@@ -3063,7 +3075,7 @@ func3_800EF3BC:
 /* 0E9CBC 800EF60C 3C048016 */  lui   $a0, %hi(bss3_80159B20) # $a0, 0x8016
 /* 0E9CC0 800EF610 24849B20 */  addiu $a0, %lo(bss3_80159B20) # addiu $a0, $a0, -0x64e0
 /* 0E9CC4 800EF614 00031FC3 */  sra   $v1, $v1, 0x1f
-/* 0E9CC8 800EF618 AC820000 */  sw    $v0, ($a0)
+/* 0E9CC8 800EF618 AC820000 */  sw    $v0, ($a0) # active referee draw buffer
 /* 0E9CCC 800EF61C 00004010 */  mfhi  $t0
 /* 0E9CD0 800EF620 01031823 */  subu  $v1, $t0, $v1
 /* 0E9CD4 800EF624 00031040 */  sll   $v0, $v1, 1
@@ -3090,7 +3102,7 @@ func3_800EF3BC:
 /* 0E9D28 800EF678 46800020 */  cvt.s.w $f0, $f0
 /* 0E9D2C 800EF67C 44070000 */  mfc1  $a3, $f0
 /* 0E9D30 800EF680 00000000 */  nop   
-/* 0E9D34 800EF684 0C003E34 */  jal   func_8000F8D0
+/* 0E9D34 800EF684 0C003E34 */  jal   func_8000F8D0 # draw current referee frame
 /* 0E9D38 800EF688 2484FFF0 */   addiu $a0, $a0, -0x10
 
 .L3_800EF68C:
@@ -146016,46 +146028,46 @@ bss3_80159B08: .byte 0
 bss3_80159B10: .word 0
 	.skip 0xC
 
-# 80159B20 [w]
+# 80159B20 [w] current referee draw buffer pointer
 bss3_80159B20: .word 0
 
-# 80159B24 [w]
+# 80159B24 [w] referee display object pointer
 bss3_80159B24: .word 0
 	.skip 0xC4
 
-# 80159BEC [w]
+# 80159BEC [w] referee draw buffer pointer ring
 bss3_80159BEC: .word 0
 	.skip 8
 
-# 80159BF8 [w]
+# 80159BF8 [w] loaded referee frame/texture metadata
 bss3_80159BF8: .word 0
 
 # 80159BFC [w]
 bss3_80159BFC: .word 0
 	.skip 0x88
 
-# 80159C88 [h]
+# 80159C88 [h] referee draw buffer index (mod 3)
 bss3_80159C88: .short 0
 
-# 80159C8A [h]
+# 80159C8A [h] referee sprite flags (0x80 = hidden/inactive)
 bss3_80159C8A: .short 0
 
-# 80159C8C [b] referee state timer?
+# 80159C8C [b] referee animation frame timer
 bss3_80159C8C: .byte 0
 
-# 80159C8D [b]
+# 80159C8D [b] referee animation frame index
 bss3_80159C8D: .byte 0
 
-# 80159C8E [h] referee X position
+# 80159C8E [h] referee horizontal slide/position
 bss3_80159C8E: .short 0
 
 # 80159C90 [h] referee Y position
 bss3_80159C90: .short 0
 
-# 80159C92 [b] referee animation status
+# 80159C92 [b] referee animation state
 bss3_80159C92: .byte 0
 
-# 80159C93 [b] referee animation frames?
+# 80159C93 [b] referee frame/pose metadata index
 bss3_80159C93: .byte 0
 	.align 4
 
