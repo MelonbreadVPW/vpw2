@@ -2507,8 +2507,11 @@ func3_800EEE7C:
 
 /*----------------------------------------------------------------------------*/
 # Params:
-# $a0 -
+# $a0 - outside count value to display (1..20)
 
+# Shows/updates the referee outside-count number overlay.
+# Builds either a centered one-digit display or a two-digit display,
+# caching digit values so unchanged digit sprites are not rebuilt.
 func3_800EEF44:
 /* 0E95F4 800EEF44 3C028017 */  lui   $v0, %hi(bss3_8016C010) # $v0, 0x8017
 /* 0E95F8 800EEF48 8442C010 */  lh    $v0, %lo(bss3_8016C010)($v0)
@@ -2520,9 +2523,10 @@ func3_800EEF44:
 /* 0E9610 800EEF60 AFB40050 */  sw    $s4, 0x50($sp)
 /* 0E9614 800EEF64 AFB3004C */  sw    $s3, 0x4c($sp)
 /* 0E9618 800EEF68 AFB10044 */  sw    $s1, 0x44($sp)
-/* 0E961C 800EEF6C 144000C0 */  bnez  $v0, .L3_800EF270
+/* 0E961C 800EEF6C 144000C0 */  bnez  $v0, .L3_800EF270 # outside-count overlay disabled/locked
 /* 0E9620 800EEF70 AFB00040 */   sw    $s0, 0x40($sp)
 
+# valid outside count range: 1..20
 /* 0E9624 800EEF74 2482FFFF */  addiu $v0, $a0, -1
 /* 0E9628 800EEF78 3042FFFF */  andi  $v0, $v0, 0xffff
 /* 0E962C 800EEF7C 2C420014 */  sltiu $v0, $v0, 0x14
@@ -2532,12 +2536,12 @@ func3_800EEF44:
 /* 0E9638 800EEF88 3C028016 */  lui   $v0, %hi(bss3_8015AFE2) # $v0, 0x8016
 /* 0E963C 800EEF8C 8442AFE2 */  lh    $v0, %lo(bss3_8015AFE2)($v0)
 /* 0E9640 800EEF90 00118403 */  sra   $s0, $s1, 0x10
-/* 0E9644 800EEF94 10500005 */  beq   $v0, $s0, .L3_800EEFAC
+/* 0E9644 800EEF94 10500005 */  beq   $v0, $s0, .L3_800EEFAC # skip count cue if display count unchanged
 /* 0E9648 800EEF98 00101040 */   sll   $v0, $s0, 1
 
 /* 0E964C 800EEF9C 3C048015 */  lui   $a0, %hi(tbl_8015203A)
 /* 0E9650 800EEFA0 00822021 */  addu  $a0, $a0, $v0
-/* 0E9654 800EEFA4 0C005770 */  jal   func_80015DC0
+/* 0E9654 800EEFA4 0C005770 */  jal   func_80015DC0 # play/trigger count cue
 /* 0E9658 800EEFA8 8484203A */   lh    $a0, %lo(tbl_8015203A)($a0)
 
 .L3_800EEFAC:
@@ -2550,7 +2554,7 @@ func3_800EEF44:
 /* 0E9674 800EEFC4 2402000C */  li    $v0, 12
 /* 0E9678 800EEFC8 A7A20012 */  sh    $v0, 0x12($sp)
 /* 0E967C 800EEFCC 240200FF */  li    $v0, 255
-/* 0E9680 800EEFD0 02030018 */  mult  $s0, $v1
+/* 0E9680 800EEFD0 02030018 */  mult  $s0, $v1 # divide count by 10 using magic constant
 /* 0E9684 800EEFD4 A3A20024 */  sb    $v0, 0x24($sp)
 /* 0E9688 800EEFD8 A3A20025 */  sb    $v0, 0x25($sp)
 /* 0E968C 800EEFDC A3A20026 */  sb    $v0, 0x26($sp)
@@ -2571,10 +2575,10 @@ func3_800EEF44:
 /* 0E96C8 800EF018 00431021 */  addu  $v0, $v0, $v1
 /* 0E96CC 800EF01C 00021040 */  sll   $v0, $v0, 1
 /* 0E96D0 800EF020 02021023 */  subu  $v0, $s0, $v0
-/* 0E96D4 800EF024 A3A30028 */  sb    $v1, 0x28($sp)
+/* 0E96D4 800EF024 A3A30028 */  sb    $v1, 0x28($sp) # tens digit
 /* 0E96D8 800EF028 00031E00 */  sll   $v1, $v1, 0x18
-/* 0E96DC 800EF02C 1860004E */  blez  $v1, .L3_800EF168
-/* 0E96E0 800EF030 A3A20029 */   sb    $v0, 0x29($sp)
+/* 0E96DC 800EF02C 1860004E */  blez  $v1, .L3_800EF168 # no tens digit; use centered one-digit overlay
+/* 0E96E0 800EF030 A3A20029 */   sb    $v0, 0x29($sp) # ones digit
 
 /* 0E96E4 800EF034 00008021 */  addu  $s0, $zero, $zero
 /* 0E96E8 800EF038 3C158015 */  lui   $s5, %hi(D_80151C00) # $s5, 0x8015
@@ -2585,6 +2589,7 @@ func3_800EEF44:
 /* 0E96FC 800EF04C 2631AFE8 */  addiu $s1, %lo(bss3_8015AFE8) # addiu $s1, $s1, -0x5018
 /* 0E9700 800EF050 00009821 */  addu  $s3, $zero, $zero
 
+# two-digit outside count: slot 0 = tens, slot 1 = ones
 .L3_800EF054:
 /* 0E9704 800EF054 03B01021 */  addu  $v0, $sp, $s0
 /* 0E9708 800EF058 90420028 */  lbu   $v0, 0x28($v0)
@@ -2592,7 +2597,7 @@ func3_800EEF44:
 /* 0E9710 800EF060 00021600 */  sll   $v0, $v0, 0x18
 /* 0E9714 800EF064 00022603 */  sra   $a0, $v0, 0x18
 /* 0E9718 800EF068 00021603 */  sra   $v0, $v0, 0x18
-/* 0E971C 800EF06C 1062002A */  beq   $v1, $v0, .L3_800EF118
+/* 0E971C 800EF06C 1062002A */  beq   $v1, $v0, .L3_800EF118 # cached digit unchanged
 /* 0E9720 800EF070 00102840 */   sll   $a1, $s0, 1
 
 /* 0E9724 800EF074 00101400 */  sll   $v0, $s0, 0x10
@@ -2617,7 +2622,7 @@ func3_800EEF44:
 /* 0E9770 800EF0C0 3C028016 */  lui   $v0, %hi(bss3_8015A7C0) # $v0, 0x8016
 /* 0E9774 800EF0C4 2442A7C0 */  addiu $v0, %lo(bss3_8015A7C0) # addiu $v0, $v0, -0x5840
 /* 0E9778 800EF0C8 00A22821 */  addu  $a1, $a1, $v0
-/* 0E977C 800EF0CC 0C03A551 */  jal   func3_800E9544
+/* 0E977C 800EF0CC 0C03A551 */  jal   func3_800E9544 # build bright/white digit layer
 /* 0E9780 800EF0D0 02652821 */   addu  $a1, $s3, $a1
 
 /* 0E9784 800EF0D4 3C048016 */  lui   $a0, %hi(bss3_8015A600) # $a0, 0x8016
@@ -2635,7 +2640,7 @@ func3_800EEF44:
 /* 0E97B4 800EF104 3C028016 */  lui   $v0, %hi(bss3_8015ABD0) # $v0, 0x8016
 /* 0E97B8 800EF108 2442ABD0 */  addiu $v0, %lo(bss3_8015ABD0) # addiu $v0, $v0, -0x5430
 /* 0E97BC 800EF10C 00A22821 */  addu  $a1, $a1, $v0
-/* 0E97C0 800EF110 0C03A551 */  jal   func3_800E9544
+/* 0E97C0 800EF110 0C03A551 */  jal   func3_800E9544 # build dark/outline digit layer
 /* 0E97C4 800EF114 02652821 */   addu  $a1, $s3, $a1
 
 .L3_800EF118:
@@ -2643,7 +2648,7 @@ func3_800EEF44:
 /* 0E97CC 800EF11C 00721821 */  addu  $v1, $v1, $s2
 /* 0E97D0 800EF120 8C63A45C */  lw    $v1, %lo(bss3_8015A45C)($v1)
 /* 0E97D4 800EF124 8C620000 */  lw    $v0, ($v1)
-/* 0E97D8 800EF128 00541024 */  and   $v0, $v0, $s4
+/* 0E97D8 800EF128 00541024 */  and   $v0, $v0, $s4 # clear hide bit (show digit layer)
 /* 0E97DC 800EF12C AC620000 */  sw    $v0, ($v1)
 /* 0E97E0 800EF130 3C038016 */  lui   $v1, %hi(bss3_8015A614)
 /* 0E97E4 800EF134 00721821 */  addu  $v1, $v1, $s2
@@ -2652,7 +2657,7 @@ func3_800EEF44:
 /* 0E97F0 800EF140 26730208 */  addiu $s3, $s3, 0x208
 /* 0E97F4 800EF144 8C620000 */  lw    $v0, ($v1)
 /* 0E97F8 800EF148 26100001 */  addiu $s0, $s0, 1
-/* 0E97FC 800EF14C 00541024 */  and   $v0, $v0, $s4
+/* 0E97FC 800EF14C 00541024 */  and   $v0, $v0, $s4 # clear hide bit (show digit layer)
 /* 0E9800 800EF150 AC620000 */  sw    $v0, ($v1)
 /* 0E9804 800EF154 2E020002 */  sltiu $v0, $s0, 2
 /* 0E9808 800EF158 1440FFBE */  bnez  $v0, .L3_800EF054
@@ -2661,25 +2666,26 @@ func3_800EEF44:
 /* 0E9810 800EF160 0803BC9A */  j     .L3_800EF268
 /* 0E9814 800EF164 24040006 */   li    $a0, 6
 
+# one-digit outside count: hide two-digit/tens-position overlay pair
 .L3_800EF168:
 /* 0E9818 800EF168 3C038016 */  lui   $v1, %hi(bss3_8015A45C) # $v1, 0x8016
 /* 0E981C 800EF16C 8C63A45C */  lw    $v1, %lo(bss3_8015A45C)($v1)
 /* 0E9820 800EF170 8C620000 */  lw    $v0, ($v1)
-/* 0E9824 800EF174 34420080 */  ori   $v0, $v0, 0x80
+/* 0E9824 800EF174 34420080 */  ori   $v0, $v0, 0x80 # set hide bit
 /* 0E9828 800EF178 AC620000 */  sw    $v0, ($v1)
 /* 0E982C 800EF17C 3C038016 */  lui   $v1, %hi(bss3_8015A614) # $v1, 0x8016
 /* 0E9830 800EF180 8C63A614 */  lw    $v1, %lo(bss3_8015A614)($v1)
 /* 0E9834 800EF184 8C620000 */  lw    $v0, ($v1)
 /* 0E9838 800EF188 3C108016 */  lui   $s0, %hi(bss3_8015AFEA) # $s0, 0x8016
 /* 0E983C 800EF18C 2610AFEA */  addiu $s0, %lo(bss3_8015AFEA) # addiu $s0, $s0, -0x5016
-/* 0E9840 800EF190 34420080 */  ori   $v0, $v0, 0x80
+/* 0E9840 800EF190 34420080 */  ori   $v0, $v0, 0x80 # set hide bit
 /* 0E9844 800EF194 AC620000 */  sw    $v0, ($v1)
 /* 0E9848 800EF198 93A20029 */  lbu   $v0, 0x29($sp)
 /* 0E984C 800EF19C 86030000 */  lh    $v1, ($s0)
 /* 0E9850 800EF1A0 00021600 */  sll   $v0, $v0, 0x18
 /* 0E9854 800EF1A4 00023E03 */  sra   $a3, $v0, 0x18
 /* 0E9858 800EF1A8 00021603 */  sra   $v0, $v0, 0x18
-/* 0E985C 800EF1AC 1062002D */  beq   $v1, $v0, .L3_800EF264
+/* 0E985C 800EF1AC 1062002D */  beq   $v1, $v0, .L3_800EF264 # cached ones digit unchanged
 /* 0E9860 800EF1B0 00022840 */   sll   $a1, $v0, 1
 
 /* 0E9864 800EF1B4 3C048016 */  lui   $a0, %hi(bss3_8015A524) # $a0, 0x8016
@@ -2698,7 +2704,7 @@ func3_800EEF44:
 /* 0E9898 800EF1E8 A6070000 */  sh    $a3, ($s0)
 /* 0E989C 800EF1EC 3C018016 */  lui   $at, %hi(bss3_8015AFE6) # $at, 0x8016
 /* 0E98A0 800EF1F0 A422AFE6 */  sh    $v0, %lo(bss3_8015AFE6)($at)
-/* 0E98A4 800EF1F4 0C03A551 */  jal   func3_800E9544
+/* 0E98A4 800EF1F4 0C03A551 */  jal   func3_800E9544 # build centered bright/white digit layer
 /* 0E98A8 800EF1F8 A7A30010 */   sh    $v1, 0x10($sp)
 
 /* 0E98AC 800EF1FC 86020000 */  lh    $v0, ($s0)
@@ -2714,26 +2720,26 @@ func3_800EEF44:
 /* 0E98D4 800EF224 00052880 */  sll   $a1, $a1, 2
 /* 0E98D8 800EF228 3C028016 */  lui   $v0, %hi(bss3_8015ADD8) # $v0, 0x8016
 /* 0E98DC 800EF22C 2442ADD8 */  addiu $v0, %lo(bss3_8015ADD8) # addiu $v0, $v0, -0x5228
-/* 0E98E0 800EF230 0C03A551 */  jal   func3_800E9544
+/* 0E98E0 800EF230 0C03A551 */  jal   func3_800E9544 # build centered dark/outline digit layer
 /* 0E98E4 800EF234 00A22821 */   addu  $a1, $a1, $v0
 
 /* 0E98E8 800EF238 3C038016 */  lui   $v1, %hi(bss3_8015A538) # $v1, 0x8016
 /* 0E98EC 800EF23C 8C63A538 */  lw    $v1, %lo(bss3_8015A538)($v1)
 /* 0E98F0 800EF240 8C620000 */  lw    $v0, ($v1)
 /* 0E98F4 800EF244 2404FF7F */  li    $a0, -129
-/* 0E98F8 800EF248 00441024 */  and   $v0, $v0, $a0
+/* 0E98F8 800EF248 00441024 */  and   $v0, $v0, $a0 # clear hide bit (show centered digit layer)
 /* 0E98FC 800EF24C AC620000 */  sw    $v0, ($v1)
 /* 0E9900 800EF250 3C038016 */  lui   $v1, %hi(bss3_8015A6F0) # $v1, 0x8016
 /* 0E9904 800EF254 8C63A6F0 */  lw    $v1, %lo(bss3_8015A6F0)($v1)
 /* 0E9908 800EF258 8C620000 */  lw    $v0, ($v1)
-/* 0E990C 800EF25C 00441024 */  and   $v0, $v0, $a0
+/* 0E990C 800EF25C 00441024 */  and   $v0, $v0, $a0 # clear hide bit (show centered digit layer)
 /* 0E9910 800EF260 AC620000 */  sw    $v0, ($v1)
 
 .L3_800EF264:
 /* 0E9914 800EF264 24040006 */  li    $a0, 6
 
 .L3_800EF268:
-/* 0E9918 800EF268 0C03BDA6 */  jal   func3_800EF698
+/* 0E9918 800EF268 0C03BDA6 */  jal   func3_800EF698 # set/maintain referee outside-count animation state
 /* 0E991C 800EF26C 00002821 */   addu  $a1, $zero, $zero
 
 .L3_800EF270:
@@ -2749,18 +2755,23 @@ func3_800EEF44:
 
 /*----------------------------------------------------------------------------*/
 # Params:
-# $a0 -
+# $a0 - match result/finish flags
 
+# Selects the post-match big-message/referee animation from match-result flags.
+# Queues a message index in bss3_8015AFEC for the overlay update loop and
+# starts the matching referee animation state via func3_800EF698.
 func3_800EF294:
 /* 0E9944 800EF294 3C028017 */  lui   $v0, %hi(bss3_8016C010) # $v0, 0x8017
 /* 0E9948 800EF298 8442C010 */  lh    $v0, %lo(bss3_8016C010)($v0)
 /* 0E994C 800EF29C 27BDFFE8 */  addiu $sp, $sp, -0x18
-/* 0E9950 800EF2A0 14400041 */  bnez  $v0, .L3_800EF3A8
+/* 0E9950 800EF2A0 14400041 */  bnez  $v0, .L3_800EF3A8 # result overlay/referee flow already locked
 /* 0E9954 800EF2A4 AFBF0010 */   sw    $ra, 0x10($sp)
 
+# delay before the queued finish/result big-message is installed
 /* 0E9958 800EF2A8 2402001E */  li    $v0, 30
 /* 0E995C 800EF2AC 3C018016 */  lui   $at, %hi(bss3_8015AFEE) # $at, 0x8016
 /* 0E9960 800EF2B0 A422AFEE */  sh    $v0, %lo(bss3_8015AFEE)($at)
+# time up -> BigMessage_TimeUp, referee state 10
 /* 0E9964 800EF2B4 30824000 */  andi  $v0, $a0, 0x4000
 /* 0E9968 800EF2B8 10400003 */  beqz  $v0, .L3_800EF2C8
 /* 0E996C 800EF2BC 2403FFFF */   li    $v1, -1
@@ -2768,12 +2779,14 @@ func3_800EF294:
 /* 0E9970 800EF2C0 0803BCD7 */  j     .L3_800EF35C
 /* 0E9974 800EF2C4 24020004 */   li    $v0, 4
 
+# ring-out-related flags -> BigMessage_RingOut, referee state 7
 .L3_800EF2C8:
 /* 0E9978 800EF2C8 3C02000D */  lui   $v0, 0xd
 /* 0E997C 800EF2CC 00821024 */  and   $v0, $a0, $v0
 /* 0E9980 800EF2D0 14400005 */  bnez  $v0, .L3_800EF2E8
 /* 0E9984 800EF2D4 24020002 */   li    $v0, 2
 
+# double-ring-out flag -> BigMessage_DoubleRingOut, referee state 7
 /* 0E9988 800EF2D8 3C020002 */  lui   $v0, 2
 /* 0E998C 800EF2DC 00821024 */  and   $v0, $a0, $v0
 /* 0E9990 800EF2E0 10400005 */  beqz  $v0, .L3_800EF2F8
@@ -2785,6 +2798,7 @@ func3_800EF294:
 /* 0E99A0 800EF2F0 0803BCDA */  j     .L3_800EF368
 /* 0E99A4 800EF2F4 24030007 */   li    $v1, 7
 
+# draw flag -> BigMessage_Draw, no message delay, referee state 10
 .L3_800EF2F8:
 /* 0E99A8 800EF2F8 30820800 */  andi  $v0, $a0, 0x800
 /* 0E99AC 800EF2FC 10400007 */  beqz  $v0, .L3_800EF31C
@@ -2797,6 +2811,7 @@ func3_800EF294:
 /* 0E99C4 800EF314 0803BCDA */  j     .L3_800EF368
 /* 0E99C8 800EF318 2403000A */   li    $v1, 10
 
+# three-count fall flag -> BigMessage_ThreeCountFall, referee state 3
 .L3_800EF31C:
 /* 0E99CC 800EF31C 30822000 */  andi  $v0, $a0, 0x2000
 /* 0E99D0 800EF320 10400005 */  beqz  $v0, .L3_800EF338
@@ -2807,6 +2822,7 @@ func3_800EF294:
 /* 0E99E0 800EF330 0803BCDA */  j     .L3_800EF368
 /* 0E99E4 800EF334 24030003 */   li    $v1, 3
 
+# give-up/submission flag -> BigMessage_GiveUp, referee state 5
 .L3_800EF338:
 /* 0E99E8 800EF338 10400005 */  beqz  $v0, .L3_800EF350
 /* 0E99EC 800EF33C 24020001 */   li    $v0, 1
@@ -2816,6 +2832,7 @@ func3_800EF294:
 /* 0E99F8 800EF348 0803BCDA */  j     .L3_800EF368
 /* 0E99FC 800EF34C 24030005 */   li    $v1, 5
 
+# TKO flag -> BigMessage_TKO, referee state 10
 .L3_800EF350:
 /* 0E9A00 800EF350 30828000 */  andi  $v0, $a0, 0x8000
 /* 0E9A04 800EF354 10400004 */  beqz  $v0, .L3_800EF368
@@ -2826,18 +2843,20 @@ func3_800EF294:
 /* 0E9A10 800EF360 A422AFEC */  sh    $v0, %lo(bss3_8015AFEC)($at)
 /* 0E9A14 800EF364 2403000A */  li    $v1, 10
 
+# v1 holds referee animation state; -1 means no state change
 .L3_800EF368:
 /* 0E9A18 800EF368 00031400 */  sll   $v0, $v1, 0x10
 /* 0E9A1C 800EF36C 00022403 */  sra   $a0, $v0, 0x10
 /* 0E9A20 800EF370 04800003 */  bltz  $a0, .L3_800EF380
 /* 0E9A24 800EF374 00000000 */   nop   
 
-/* 0E9A28 800EF378 0C03BDA6 */  jal   func3_800EF698
+/* 0E9A28 800EF378 0C03BDA6 */  jal   func3_800EF698 # start/maintain selected referee result animation
 /* 0E9A2C 800EF37C 00002821 */   addu  $a1, $zero, $zero
 
 .L3_800EF380:
 /* 0E9A30 800EF380 3C02800A */  lui   $v0, %hi(bssMain_8009D5DC) # $v0, 0x800a
 /* 0E9A34 800EF384 8C42D5DC */  lw    $v0, %lo(bssMain_8009D5DC)($v0)
+# special result flag locks the overlay/referee flow from further updates
 /* 0E9A38 800EF388 3C030010 */  lui   $v1, 0x10
 /* 0E9A3C 800EF38C 00431024 */  and   $v0, $v0, $v1
 /* 0E9A40 800EF390 10400005 */  beqz  $v0, .L3_800EF3A8
@@ -2859,19 +2878,24 @@ func3_800EF3B4:
 /* 0E9A68 800EF3B8 00000000 */   nop   
 
 /*----------------------------------------------------------------------------*/
+# Updates and draws the referee sprite each frame.
+# Advances the current referee animation frame timer/index, handles animation
+# loop/end markers, slides the referee sprite in/out, toggles the hide bit,
+# and submits the current frame to the sprite renderer.
 func3_800EF3BC:
 /* 0E9A6C 800EF3BC 3C028016 */  lui   $v0, %hi(bss3_80159C8A) # $v0, 0x8016
 /* 0E9A70 800EF3C0 94429C8A */  lhu   $v0, %lo(bss3_80159C8A)($v0)
 /* 0E9A74 800EF3C4 27BDFFC8 */  addiu $sp, $sp, -0x38
-/* 0E9A78 800EF3C8 30420080 */  andi  $v0, $v0, 0x80
+/* 0E9A78 800EF3C8 30420080 */  andi  $v0, $v0, 0x80 # hidden/inactive flag
 /* 0E9A7C 800EF3CC 10400005 */  beqz  $v0, .L3_800EF3E4
 /* 0E9A80 800EF3D0 AFBF0030 */   sw    $ra, 0x30($sp)
 
 /* 0E9A84 800EF3D4 3C028016 */  lui   $v0, %hi(bss3_80159C8E) # $v0, 0x8016
 /* 0E9A88 800EF3D8 84429C8E */  lh    $v0, %lo(bss3_80159C8E)($v0)
-/* 0E9A8C 800EF3DC 184000AB */  blez  $v0, .L3_800EF68C
+/* 0E9A8C 800EF3DC 184000AB */  blez  $v0, .L3_800EF68C # hidden and fully slid out
 /* 0E9A90 800EF3E0 00000000 */   nop   
 
+# Tick current referee animation frame timer.
 .L3_800EF3E4:
 /* 0E9A94 800EF3E4 3C028016 */  lui   $v0, %hi(bss3_80159C8C) # $v0, 0x8016
 /* 0E9A98 800EF3E8 80429C8C */  lb    $v0, %lo(bss3_80159C8C)($v0)
@@ -2882,9 +2906,10 @@ func3_800EF3BC:
 /* 0E9AA8 800EF3F8 3C018016 */  lui   $at, %hi(bss3_80159C8C) # $at, 0x8016
 /* 0E9AAC 800EF3FC A0229C8C */  sb    $v0, %lo(bss3_80159C8C)($at)
 /* 0E9AB0 800EF400 00021600 */  sll   $v0, $v0, 0x18
-/* 0E9AB4 800EF404 14400039 */  bnez  $v0, .L3_800EF4EC
+/* 0E9AB4 800EF404 14400039 */  bnez  $v0, .L3_800EF4EC # keep drawing current frame until timer expires
 /* 0E9AB8 800EF408 00000000 */   nop   
 
+# Timer expired: advance to next frame in current referee animation.
 /* 0E9ABC 800EF40C 3C038016 */  lui   $v1, %hi(bss3_80159C8D) # $v1, 0x8016
 /* 0E9AC0 800EF410 90639C8D */  lbu   $v1, %lo(bss3_80159C8D)($v1)
 /* 0E9AC4 800EF414 3C048016 */  lui   $a0, %hi(bss3_80159C92) # $a0, 0x8016
@@ -2902,7 +2927,7 @@ func3_800EF3BC:
 /* 0E9AF4 800EF444 3C018016 */  lui   $at, %hi(bss3_80159C8D) # $at, 0x8016
 /* 0E9AF8 800EF448 A0239C8D */  sb    $v1, %lo(bss3_80159C8D)($at)
 /* 0E9AFC 800EF44C 2402FFFF */  li    $v0, -1
-/* 0E9B00 800EF450 14820003 */  bne   $a0, $v0, .L3_800EF460
+/* 0E9B00 800EF450 14820003 */  bne   $a0, $v0, .L3_800EF460 # -1 frame marker loops back to frame 0
 /* 0E9B04 800EF454 00000000 */   nop   
 
 /* 0E9B08 800EF458 3C018016 */  lui   $at, %hi(bss3_80159C8D) # $at, 0x8016
@@ -2915,7 +2940,7 @@ func3_800EF3BC:
 /* 0E9B1C 800EF46C 00061840 */  sll   $v1, $a2, 1
 /* 0E9B20 800EF470 00621821 */  addu  $v1, $v1, $v0
 /* 0E9B24 800EF474 84620000 */  lh    $v0, ($v1)
-/* 0E9B28 800EF478 1040001A */  beqz  $v0, .L3_800EF4E4
+/* 0E9B28 800EF478 1040001A */  beqz  $v0, .L3_800EF4E4 # 0 frame marker ends the animation
 /* 0E9B2C 800EF47C 00401821 */   addu  $v1, $v0, $zero
 
 /* 0E9B30 800EF480 24620058 */  addiu $v0, $v1, 0x58
@@ -2927,11 +2952,13 @@ func3_800EF3BC:
 /* 0E9B48 800EF498 8C841FE8 */  lw    $a0, %lo(tbl_RefereeFrameTime_80151FE8)($a0)
 /* 0E9B4C 800EF49C 00621821 */  addu  $v1, $v1, $v0
 /* 0E9B50 800EF4A0 00031843 */  sra   $v1, $v1, 1
+# Convert referee frame file ID to the loaded frame/texture metadata index.
 /* 0E9B54 800EF4A4 3C018016 */  lui   $at, %hi(bss3_80159C93) # $at, 0x8016
 /* 0E9B58 800EF4A8 A0239C93 */  sb    $v1, %lo(bss3_80159C93)($at)
 /* 0E9B5C 800EF4AC 00862021 */  addu  $a0, $a0, $a2
 /* 0E9B60 800EF4B0 90820000 */  lbu   $v0, ($a0)
 /* 0E9B64 800EF4B4 28630005 */  slti  $v1, $v1, 5
+# Store duration for the next animation frame.
 /* 0E9B68 800EF4B8 3C018016 */  lui   $at, %hi(bss3_80159C8C) # $at, 0x8016
 /* 0E9B6C 800EF4BC A0229C8C */  sb    $v0, %lo(bss3_80159C8C)($at)
 /* 0E9B70 800EF4C0 14600005 */  bnez  $v1, .L3_800EF4D8
@@ -2948,9 +2975,10 @@ func3_800EF3BC:
 /* 0E9B90 800EF4E0 A4229C90 */   sh    $v0, %lo(bss3_80159C90)($at)
 
 .L3_800EF4E4:
-/* 0E9B94 800EF4E4 0C03BEEB */  jal   func3_800EFBAC
+/* 0E9B94 800EF4E4 0C03BEEB */  jal   func3_800EFBAC # reset/clear finished referee animation
 /* 0E9B98 800EF4E8 00000000 */   nop   
 
+# Hide/show the referee object based on global display state.
 .L3_800EF4EC:
 /* 0E9B9C 800EF4EC 0C050AE8 */  jal   func3_80142BA0
 /* 0E9BA0 800EF4F0 00000000 */   nop   
@@ -2961,7 +2989,7 @@ func3_800EF3BC:
 /* 0E9BAC 800EF4FC 3C038016 */  lui   $v1, %hi(bss3_80159B24) # $v1, 0x8016
 /* 0E9BB0 800EF500 8C639B24 */  lw    $v1, %lo(bss3_80159B24)($v1)
 /* 0E9BB4 800EF504 8C620000 */  lw    $v0, ($v1)
-/* 0E9BB8 800EF508 34420080 */  ori   $v0, $v0, 0x80
+/* 0E9BB8 800EF508 34420080 */  ori   $v0, $v0, 0x80 # set hide bit
 /* 0E9BBC 800EF50C 0803BD4A */  j     .L3_800EF528
 /* 0E9BC0 800EF510 AC620000 */   sw    $v0, ($v1)
 
@@ -2969,14 +2997,14 @@ func3_800EF3BC:
 /* 0E9BC4 800EF514 3C028016 */  lui   $v0, %hi(bss3_80159B24) # $v0, 0x8016
 /* 0E9BC8 800EF518 8C429B24 */  lw    $v0, %lo(bss3_80159B24)($v0)
 /* 0E9BCC 800EF51C 8C430000 */  lw    $v1, ($v0)
-/* 0E9BD0 800EF520 00641824 */  and   $v1, $v1, $a0
+/* 0E9BD0 800EF520 00641824 */  and   $v1, $v1, $a0 # clear hide bit
 /* 0E9BD4 800EF524 AC430000 */  sw    $v1, ($v0)
 
 .L3_800EF528:
 /* 0E9BD8 800EF528 3C028016 */  lui   $v0, %hi(bss3_80159C92) # $v0, 0x8016
 /* 0E9BDC 800EF52C 80429C92 */  lb    $v0, %lo(bss3_80159C92)($v0)
 /* 0E9BE0 800EF530 10400012 */  beqz  $v0, .L3_800EF57C
-/* 0E9BE4 800EF534 24030080 */   li    $v1, 128
+/* 0E9BE4 800EF534 24030080 */   li    $v1, 128 # slide-in target X
 
 /* 0E9BE8 800EF538 3C028016 */  lui   $v0, %hi(bss3_80159C8E) # $v0, 0x8016
 /* 0E9BEC 800EF53C 84429C8E */  lh    $v0, %lo(bss3_80159C8E)($v0)
@@ -2989,7 +3017,7 @@ func3_800EF3BC:
 /* 0E9C04 800EF554 000317C2 */  srl   $v0, $v1, 0x1f
 /* 0E9C08 800EF558 00621021 */  addu  $v0, $v1, $v0
 /* 0E9C0C 800EF55C 00021043 */  sra   $v0, $v0, 1
-/* 0E9C10 800EF560 00821021 */  addu  $v0, $a0, $v0
+/* 0E9C10 800EF560 00821021 */  addu  $v0, $a0, $v0 # ease halfway toward target X
 /* 0E9C14 800EF564 3C018016 */  lui   $at, %hi(bss3_80159C8E) # $at, 0x8016
 /* 0E9C18 800EF568 0803BD72 */  j     .L3_800EF5C8
 /* 0E9C1C 800EF56C A4229C8E */   sh    $v0, %lo(bss3_80159C8E)($at)
@@ -2999,6 +3027,7 @@ func3_800EF3BC:
 /* 0E9C24 800EF574 0803BD72 */  j     .L3_800EF5C8
 /* 0E9C28 800EF578 A4229C8E */   sh    $v0, %lo(bss3_80159C8E)($at)
 
+# No active referee animation: slide out, then mark hidden.
 .L3_800EF57C:
 /* 0E9C2C 800EF57C 3C028016 */  lui   $v0, %hi(bss3_80159C8E) # $v0, 0x8016
 /* 0E9C30 800EF580 84429C8E */  lh    $v0, %lo(bss3_80159C8E)($v0)
@@ -3007,7 +3036,7 @@ func3_800EF3BC:
 /* 0E9C3C 800EF58C 14400005 */  bnez  $v0, .L3_800EF5A4
 /* 0E9C40 800EF590 24020080 */   li    $v0, 128
 
-/* 0E9C44 800EF594 2462FFEC */  addiu $v0, $v1, -0x14
+/* 0E9C44 800EF594 2462FFEC */  addiu $v0, $v1, -0x14 # slide out by 20 px/frame
 /* 0E9C48 800EF598 3C018016 */  lui   $at, %hi(bss3_80159C8E) # $at, 0x8016
 /* 0E9C4C 800EF59C 0803BD72 */  j     .L3_800EF5C8
 /* 0E9C50 800EF5A0 A4229C8E */   sh    $v0, %lo(bss3_80159C8E)($at)
@@ -3018,11 +3047,13 @@ func3_800EF3BC:
 /* 0E9C5C 800EF5AC 8C830000 */  lw    $v1, ($a0)
 /* 0E9C60 800EF5B0 3C018016 */  lui   $at, %hi(bss3_80159C8E) # $at, 0x8016
 /* 0E9C64 800EF5B4 A4209C8E */  sh    $zero, %lo(bss3_80159C8E)($at)
+# Store hidden flag once slide-out is complete.
 /* 0E9C68 800EF5B8 3C018016 */  lui   $at, %hi(bss3_80159C8A) # $at, 0x8016
 /* 0E9C6C 800EF5BC A4229C8A */  sh    $v0, %lo(bss3_80159C8A)($at)
-/* 0E9C70 800EF5C0 34630080 */  ori   $v1, $v1, 0x80
+/* 0E9C70 800EF5C0 34630080 */  ori   $v1, $v1, 0x80 # hide object after slide-out
 /* 0E9C74 800EF5C4 AC830000 */  sw    $v1, ($a0)
 
+# Cycle referee draw buffers modulo 3 and submit current frame.
 .L3_800EF5C8:
 /* 0E9C78 800EF5C8 3C028016 */  lui   $v0, %hi(bss3_80159C88) # $v0, 0x8016
 /* 0E9C7C 800EF5CC 94429C88 */  lhu   $v0, %lo(bss3_80159C88)($v0)
@@ -3032,7 +3063,7 @@ func3_800EF3BC:
 /* 0E9C8C 800EF5DC 00041C00 */  sll   $v1, $a0, 0x10
 /* 0E9C90 800EF5E0 00033403 */  sra   $a2, $v1, 0x10
 /* 0E9C94 800EF5E4 00021400 */  sll   $v0, $v0, 0x10
-/* 0E9C98 800EF5E8 00C50018 */  mult  $a2, $a1
+/* 0E9C98 800EF5E8 00C50018 */  mult  $a2, $a1 # modulo 3 using magic constant
 /* 0E9C9C 800EF5EC 00021383 */  sra   $v0, $v0, 0xe
 /* 0E9CA0 800EF5F0 3C018016 */  lui   $at, %hi(bss3_80159BEC)
 /* 0E9CA4 800EF5F4 00220821 */  addu  $at, $at, $v0
@@ -3044,7 +3075,7 @@ func3_800EF3BC:
 /* 0E9CBC 800EF60C 3C048016 */  lui   $a0, %hi(bss3_80159B20) # $a0, 0x8016
 /* 0E9CC0 800EF610 24849B20 */  addiu $a0, %lo(bss3_80159B20) # addiu $a0, $a0, -0x64e0
 /* 0E9CC4 800EF614 00031FC3 */  sra   $v1, $v1, 0x1f
-/* 0E9CC8 800EF618 AC820000 */  sw    $v0, ($a0)
+/* 0E9CC8 800EF618 AC820000 */  sw    $v0, ($a0) # active referee draw buffer
 /* 0E9CCC 800EF61C 00004010 */  mfhi  $t0
 /* 0E9CD0 800EF620 01031823 */  subu  $v1, $t0, $v1
 /* 0E9CD4 800EF624 00031040 */  sll   $v0, $v1, 1
@@ -3071,7 +3102,7 @@ func3_800EF3BC:
 /* 0E9D28 800EF678 46800020 */  cvt.s.w $f0, $f0
 /* 0E9D2C 800EF67C 44070000 */  mfc1  $a3, $f0
 /* 0E9D30 800EF680 00000000 */  nop   
-/* 0E9D34 800EF684 0C003E34 */  jal   func_8000F8D0
+/* 0E9D34 800EF684 0C003E34 */  jal   func_8000F8D0 # draw current referee frame
 /* 0E9D38 800EF688 2484FFF0 */   addiu $a0, $a0, -0x10
 
 .L3_800EF68C:
@@ -145997,46 +146028,46 @@ bss3_80159B08: .byte 0
 bss3_80159B10: .word 0
 	.skip 0xC
 
-# 80159B20 [w]
+# 80159B20 [w] current referee draw buffer pointer
 bss3_80159B20: .word 0
 
-# 80159B24 [w]
+# 80159B24 [w] referee display object pointer
 bss3_80159B24: .word 0
 	.skip 0xC4
 
-# 80159BEC [w]
+# 80159BEC [w] referee draw buffer pointer ring
 bss3_80159BEC: .word 0
 	.skip 8
 
-# 80159BF8 [w]
+# 80159BF8 [w] loaded referee frame/texture metadata
 bss3_80159BF8: .word 0
 
 # 80159BFC [w]
 bss3_80159BFC: .word 0
 	.skip 0x88
 
-# 80159C88 [h]
+# 80159C88 [h] referee draw buffer index (mod 3)
 bss3_80159C88: .short 0
 
-# 80159C8A [h]
+# 80159C8A [h] referee sprite flags (0x80 = hidden/inactive)
 bss3_80159C8A: .short 0
 
-# 80159C8C [b] referee state timer?
+# 80159C8C [b] referee animation frame timer
 bss3_80159C8C: .byte 0
 
-# 80159C8D [b]
+# 80159C8D [b] referee animation frame index
 bss3_80159C8D: .byte 0
 
-# 80159C8E [h] referee X position
+# 80159C8E [h] referee horizontal slide/position
 bss3_80159C8E: .short 0
 
 # 80159C90 [h] referee Y position
 bss3_80159C90: .short 0
 
-# 80159C92 [b] referee animation status
+# 80159C92 [b] referee animation state
 bss3_80159C92: .byte 0
 
-# 80159C93 [b] referee animation frames?
+# 80159C93 [b] referee frame/pose metadata index
 bss3_80159C93: .byte 0
 	.align 4
 
@@ -146099,7 +146130,7 @@ bss3_8015A444: .short 0
 # 8015A446 [h]
 bss3_8015A446: .short 0
 
-# 8015A448 [?]
+# 8015A448 [?] outside-count two-digit bright digit overlay slot 0
 bss3_8015A448: .word 0 # might not be a word?
 	.skip 0x10
 
@@ -146107,7 +146138,7 @@ bss3_8015A448: .word 0 # might not be a word?
 bss3_8015A45C: .word 0
 	.skip 0xC4
 
-# 8015A524 [?]
+# 8015A524 [?] outside-count centered one-digit bright overlay
 bss3_8015A524: .word 0 # might not be a word?
 	.skip 0x10
 
@@ -146115,7 +146146,7 @@ bss3_8015A524: .word 0 # might not be a word?
 bss3_8015A538: .word 0
 	.skip 0xC4
 
-# 8015A600 [?]
+# 8015A600 [?] outside-count two-digit dark/outline digit overlay slot 0
 bss3_8015A600: .word 0 # might not be a word?
 	.skip 0x10
 
@@ -146123,7 +146154,7 @@ bss3_8015A600: .word 0 # might not be a word?
 bss3_8015A614: .word 0
 	.skip 0xC4
 
-# 8015A6DC [?]
+# 8015A6DC [?] outside-count centered one-digit dark/outline overlay
 bss3_8015A6DC: .word 0 # might not be a word?
 	.skip 0x10
 
@@ -146131,44 +146162,44 @@ bss3_8015A6DC: .word 0 # might not be a word?
 bss3_8015A6F0: .word 0
 	.skip 0xCC
 
-# 8015A7C0 [b?]
+# 8015A7C0 [b?] outside-count bright digit geometry/data
 bss3_8015A7C0: .byte 0
 	.skip 0x207
 
-# 8015A9C8 [b?]
+# 8015A9C8 [b?] outside-count centered bright digit geometry/data
 bss3_8015A9C8: .byte 0
 	.skip 0x207
 
-# 8015ABD0 [b?]
+# 8015ABD0 [b?] outside-count dark/outline digit geometry/data
 bss3_8015ABD0: .byte 0
 	.skip 0x207
 
-# 8015ADD8 [b?]
+# 8015ADD8 [b?] outside-count centered dark/outline digit geometry/data
 bss3_8015ADD8: .byte 0
 	.skip 0x207
 
-# 8015AFE0 [h]
+# 8015AFE0 [h] outside-count overlay animation/frame counter
 bss3_8015AFE0: .short 0
 
-# 8015AFE2 [h]
+# 8015AFE2 [h] currently displayed outside-count value
 bss3_8015AFE2: .short 0
 
-# 8015AFE4 [h]
+# 8015AFE4 [h] outside-count two-digit slot index cache
 bss3_8015AFE4: .short 0
 
-# 8015AFE6 [h]
+# 8015AFE6 [h] outside-count centered one-digit slot index cache
 bss3_8015AFE6: .short 0
 
-# 8015AFE8 [h]
+# 8015AFE8 [h] cached two-digit tens/ones digit values
 bss3_8015AFE8: .short 0
 
-# 8015AFEA [h]
+# 8015AFEA [h] cached centered one-digit value
 bss3_8015AFEA: .short 0
 
-# 8015AFEC [h]
+# 8015AFEC [h] queued post-match big-message index (0..6, -1 = none)
 bss3_8015AFEC: .short 0
 
-# 8015AFEE [h]
+# 8015AFEE [h] delay timer before queued post-match big-message starts
 bss3_8015AFEE: .short 0
 
 # 8015AFF0 [w?]
