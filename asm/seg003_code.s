@@ -2507,8 +2507,11 @@ func3_800EEE7C:
 
 /*----------------------------------------------------------------------------*/
 # Params:
-# $a0 -
+# $a0 - outside count value to display (1..20)
 
+# Shows/updates the referee outside-count number overlay.
+# Builds either a centered one-digit display or a two-digit display,
+# caching digit values so unchanged digit sprites are not rebuilt.
 func3_800EEF44:
 /* 0E95F4 800EEF44 3C028017 */  lui   $v0, %hi(bss3_8016C010) # $v0, 0x8017
 /* 0E95F8 800EEF48 8442C010 */  lh    $v0, %lo(bss3_8016C010)($v0)
@@ -2520,9 +2523,10 @@ func3_800EEF44:
 /* 0E9610 800EEF60 AFB40050 */  sw    $s4, 0x50($sp)
 /* 0E9614 800EEF64 AFB3004C */  sw    $s3, 0x4c($sp)
 /* 0E9618 800EEF68 AFB10044 */  sw    $s1, 0x44($sp)
-/* 0E961C 800EEF6C 144000C0 */  bnez  $v0, .L3_800EF270
+/* 0E961C 800EEF6C 144000C0 */  bnez  $v0, .L3_800EF270 # outside-count overlay disabled/locked
 /* 0E9620 800EEF70 AFB00040 */   sw    $s0, 0x40($sp)
 
+# valid outside count range: 1..20
 /* 0E9624 800EEF74 2482FFFF */  addiu $v0, $a0, -1
 /* 0E9628 800EEF78 3042FFFF */  andi  $v0, $v0, 0xffff
 /* 0E962C 800EEF7C 2C420014 */  sltiu $v0, $v0, 0x14
@@ -2532,12 +2536,12 @@ func3_800EEF44:
 /* 0E9638 800EEF88 3C028016 */  lui   $v0, %hi(bss3_8015AFE2) # $v0, 0x8016
 /* 0E963C 800EEF8C 8442AFE2 */  lh    $v0, %lo(bss3_8015AFE2)($v0)
 /* 0E9640 800EEF90 00118403 */  sra   $s0, $s1, 0x10
-/* 0E9644 800EEF94 10500005 */  beq   $v0, $s0, .L3_800EEFAC
+/* 0E9644 800EEF94 10500005 */  beq   $v0, $s0, .L3_800EEFAC # skip count cue if display count unchanged
 /* 0E9648 800EEF98 00101040 */   sll   $v0, $s0, 1
 
 /* 0E964C 800EEF9C 3C048015 */  lui   $a0, %hi(tbl_8015203A)
 /* 0E9650 800EEFA0 00822021 */  addu  $a0, $a0, $v0
-/* 0E9654 800EEFA4 0C005770 */  jal   func_80015DC0
+/* 0E9654 800EEFA4 0C005770 */  jal   func_80015DC0 # play/trigger count cue
 /* 0E9658 800EEFA8 8484203A */   lh    $a0, %lo(tbl_8015203A)($a0)
 
 .L3_800EEFAC:
@@ -2550,7 +2554,7 @@ func3_800EEF44:
 /* 0E9674 800EEFC4 2402000C */  li    $v0, 12
 /* 0E9678 800EEFC8 A7A20012 */  sh    $v0, 0x12($sp)
 /* 0E967C 800EEFCC 240200FF */  li    $v0, 255
-/* 0E9680 800EEFD0 02030018 */  mult  $s0, $v1
+/* 0E9680 800EEFD0 02030018 */  mult  $s0, $v1 # divide count by 10 using magic constant
 /* 0E9684 800EEFD4 A3A20024 */  sb    $v0, 0x24($sp)
 /* 0E9688 800EEFD8 A3A20025 */  sb    $v0, 0x25($sp)
 /* 0E968C 800EEFDC A3A20026 */  sb    $v0, 0x26($sp)
@@ -2571,10 +2575,10 @@ func3_800EEF44:
 /* 0E96C8 800EF018 00431021 */  addu  $v0, $v0, $v1
 /* 0E96CC 800EF01C 00021040 */  sll   $v0, $v0, 1
 /* 0E96D0 800EF020 02021023 */  subu  $v0, $s0, $v0
-/* 0E96D4 800EF024 A3A30028 */  sb    $v1, 0x28($sp)
+/* 0E96D4 800EF024 A3A30028 */  sb    $v1, 0x28($sp) # tens digit
 /* 0E96D8 800EF028 00031E00 */  sll   $v1, $v1, 0x18
-/* 0E96DC 800EF02C 1860004E */  blez  $v1, .L3_800EF168
-/* 0E96E0 800EF030 A3A20029 */   sb    $v0, 0x29($sp)
+/* 0E96DC 800EF02C 1860004E */  blez  $v1, .L3_800EF168 # no tens digit; use centered one-digit overlay
+/* 0E96E0 800EF030 A3A20029 */   sb    $v0, 0x29($sp) # ones digit
 
 /* 0E96E4 800EF034 00008021 */  addu  $s0, $zero, $zero
 /* 0E96E8 800EF038 3C158015 */  lui   $s5, %hi(D_80151C00) # $s5, 0x8015
@@ -2585,6 +2589,7 @@ func3_800EEF44:
 /* 0E96FC 800EF04C 2631AFE8 */  addiu $s1, %lo(bss3_8015AFE8) # addiu $s1, $s1, -0x5018
 /* 0E9700 800EF050 00009821 */  addu  $s3, $zero, $zero
 
+# two-digit outside count: slot 0 = tens, slot 1 = ones
 .L3_800EF054:
 /* 0E9704 800EF054 03B01021 */  addu  $v0, $sp, $s0
 /* 0E9708 800EF058 90420028 */  lbu   $v0, 0x28($v0)
@@ -2592,7 +2597,7 @@ func3_800EEF44:
 /* 0E9710 800EF060 00021600 */  sll   $v0, $v0, 0x18
 /* 0E9714 800EF064 00022603 */  sra   $a0, $v0, 0x18
 /* 0E9718 800EF068 00021603 */  sra   $v0, $v0, 0x18
-/* 0E971C 800EF06C 1062002A */  beq   $v1, $v0, .L3_800EF118
+/* 0E971C 800EF06C 1062002A */  beq   $v1, $v0, .L3_800EF118 # cached digit unchanged
 /* 0E9720 800EF070 00102840 */   sll   $a1, $s0, 1
 
 /* 0E9724 800EF074 00101400 */  sll   $v0, $s0, 0x10
@@ -2617,7 +2622,7 @@ func3_800EEF44:
 /* 0E9770 800EF0C0 3C028016 */  lui   $v0, %hi(bss3_8015A7C0) # $v0, 0x8016
 /* 0E9774 800EF0C4 2442A7C0 */  addiu $v0, %lo(bss3_8015A7C0) # addiu $v0, $v0, -0x5840
 /* 0E9778 800EF0C8 00A22821 */  addu  $a1, $a1, $v0
-/* 0E977C 800EF0CC 0C03A551 */  jal   func3_800E9544
+/* 0E977C 800EF0CC 0C03A551 */  jal   func3_800E9544 # build bright/white digit layer
 /* 0E9780 800EF0D0 02652821 */   addu  $a1, $s3, $a1
 
 /* 0E9784 800EF0D4 3C048016 */  lui   $a0, %hi(bss3_8015A600) # $a0, 0x8016
@@ -2635,7 +2640,7 @@ func3_800EEF44:
 /* 0E97B4 800EF104 3C028016 */  lui   $v0, %hi(bss3_8015ABD0) # $v0, 0x8016
 /* 0E97B8 800EF108 2442ABD0 */  addiu $v0, %lo(bss3_8015ABD0) # addiu $v0, $v0, -0x5430
 /* 0E97BC 800EF10C 00A22821 */  addu  $a1, $a1, $v0
-/* 0E97C0 800EF110 0C03A551 */  jal   func3_800E9544
+/* 0E97C0 800EF110 0C03A551 */  jal   func3_800E9544 # build dark/outline digit layer
 /* 0E97C4 800EF114 02652821 */   addu  $a1, $s3, $a1
 
 .L3_800EF118:
@@ -2643,7 +2648,7 @@ func3_800EEF44:
 /* 0E97CC 800EF11C 00721821 */  addu  $v1, $v1, $s2
 /* 0E97D0 800EF120 8C63A45C */  lw    $v1, %lo(bss3_8015A45C)($v1)
 /* 0E97D4 800EF124 8C620000 */  lw    $v0, ($v1)
-/* 0E97D8 800EF128 00541024 */  and   $v0, $v0, $s4
+/* 0E97D8 800EF128 00541024 */  and   $v0, $v0, $s4 # clear hide bit (show digit layer)
 /* 0E97DC 800EF12C AC620000 */  sw    $v0, ($v1)
 /* 0E97E0 800EF130 3C038016 */  lui   $v1, %hi(bss3_8015A614)
 /* 0E97E4 800EF134 00721821 */  addu  $v1, $v1, $s2
@@ -2652,7 +2657,7 @@ func3_800EEF44:
 /* 0E97F0 800EF140 26730208 */  addiu $s3, $s3, 0x208
 /* 0E97F4 800EF144 8C620000 */  lw    $v0, ($v1)
 /* 0E97F8 800EF148 26100001 */  addiu $s0, $s0, 1
-/* 0E97FC 800EF14C 00541024 */  and   $v0, $v0, $s4
+/* 0E97FC 800EF14C 00541024 */  and   $v0, $v0, $s4 # clear hide bit (show digit layer)
 /* 0E9800 800EF150 AC620000 */  sw    $v0, ($v1)
 /* 0E9804 800EF154 2E020002 */  sltiu $v0, $s0, 2
 /* 0E9808 800EF158 1440FFBE */  bnez  $v0, .L3_800EF054
@@ -2661,25 +2666,26 @@ func3_800EEF44:
 /* 0E9810 800EF160 0803BC9A */  j     .L3_800EF268
 /* 0E9814 800EF164 24040006 */   li    $a0, 6
 
+# one-digit outside count: hide two-digit/tens-position overlay pair
 .L3_800EF168:
 /* 0E9818 800EF168 3C038016 */  lui   $v1, %hi(bss3_8015A45C) # $v1, 0x8016
 /* 0E981C 800EF16C 8C63A45C */  lw    $v1, %lo(bss3_8015A45C)($v1)
 /* 0E9820 800EF170 8C620000 */  lw    $v0, ($v1)
-/* 0E9824 800EF174 34420080 */  ori   $v0, $v0, 0x80
+/* 0E9824 800EF174 34420080 */  ori   $v0, $v0, 0x80 # set hide bit
 /* 0E9828 800EF178 AC620000 */  sw    $v0, ($v1)
 /* 0E982C 800EF17C 3C038016 */  lui   $v1, %hi(bss3_8015A614) # $v1, 0x8016
 /* 0E9830 800EF180 8C63A614 */  lw    $v1, %lo(bss3_8015A614)($v1)
 /* 0E9834 800EF184 8C620000 */  lw    $v0, ($v1)
 /* 0E9838 800EF188 3C108016 */  lui   $s0, %hi(bss3_8015AFEA) # $s0, 0x8016
 /* 0E983C 800EF18C 2610AFEA */  addiu $s0, %lo(bss3_8015AFEA) # addiu $s0, $s0, -0x5016
-/* 0E9840 800EF190 34420080 */  ori   $v0, $v0, 0x80
+/* 0E9840 800EF190 34420080 */  ori   $v0, $v0, 0x80 # set hide bit
 /* 0E9844 800EF194 AC620000 */  sw    $v0, ($v1)
 /* 0E9848 800EF198 93A20029 */  lbu   $v0, 0x29($sp)
 /* 0E984C 800EF19C 86030000 */  lh    $v1, ($s0)
 /* 0E9850 800EF1A0 00021600 */  sll   $v0, $v0, 0x18
 /* 0E9854 800EF1A4 00023E03 */  sra   $a3, $v0, 0x18
 /* 0E9858 800EF1A8 00021603 */  sra   $v0, $v0, 0x18
-/* 0E985C 800EF1AC 1062002D */  beq   $v1, $v0, .L3_800EF264
+/* 0E985C 800EF1AC 1062002D */  beq   $v1, $v0, .L3_800EF264 # cached ones digit unchanged
 /* 0E9860 800EF1B0 00022840 */   sll   $a1, $v0, 1
 
 /* 0E9864 800EF1B4 3C048016 */  lui   $a0, %hi(bss3_8015A524) # $a0, 0x8016
@@ -2698,7 +2704,7 @@ func3_800EEF44:
 /* 0E9898 800EF1E8 A6070000 */  sh    $a3, ($s0)
 /* 0E989C 800EF1EC 3C018016 */  lui   $at, %hi(bss3_8015AFE6) # $at, 0x8016
 /* 0E98A0 800EF1F0 A422AFE6 */  sh    $v0, %lo(bss3_8015AFE6)($at)
-/* 0E98A4 800EF1F4 0C03A551 */  jal   func3_800E9544
+/* 0E98A4 800EF1F4 0C03A551 */  jal   func3_800E9544 # build centered bright/white digit layer
 /* 0E98A8 800EF1F8 A7A30010 */   sh    $v1, 0x10($sp)
 
 /* 0E98AC 800EF1FC 86020000 */  lh    $v0, ($s0)
@@ -2714,26 +2720,26 @@ func3_800EEF44:
 /* 0E98D4 800EF224 00052880 */  sll   $a1, $a1, 2
 /* 0E98D8 800EF228 3C028016 */  lui   $v0, %hi(bss3_8015ADD8) # $v0, 0x8016
 /* 0E98DC 800EF22C 2442ADD8 */  addiu $v0, %lo(bss3_8015ADD8) # addiu $v0, $v0, -0x5228
-/* 0E98E0 800EF230 0C03A551 */  jal   func3_800E9544
+/* 0E98E0 800EF230 0C03A551 */  jal   func3_800E9544 # build centered dark/outline digit layer
 /* 0E98E4 800EF234 00A22821 */   addu  $a1, $a1, $v0
 
 /* 0E98E8 800EF238 3C038016 */  lui   $v1, %hi(bss3_8015A538) # $v1, 0x8016
 /* 0E98EC 800EF23C 8C63A538 */  lw    $v1, %lo(bss3_8015A538)($v1)
 /* 0E98F0 800EF240 8C620000 */  lw    $v0, ($v1)
 /* 0E98F4 800EF244 2404FF7F */  li    $a0, -129
-/* 0E98F8 800EF248 00441024 */  and   $v0, $v0, $a0
+/* 0E98F8 800EF248 00441024 */  and   $v0, $v0, $a0 # clear hide bit (show centered digit layer)
 /* 0E98FC 800EF24C AC620000 */  sw    $v0, ($v1)
 /* 0E9900 800EF250 3C038016 */  lui   $v1, %hi(bss3_8015A6F0) # $v1, 0x8016
 /* 0E9904 800EF254 8C63A6F0 */  lw    $v1, %lo(bss3_8015A6F0)($v1)
 /* 0E9908 800EF258 8C620000 */  lw    $v0, ($v1)
-/* 0E990C 800EF25C 00441024 */  and   $v0, $v0, $a0
+/* 0E990C 800EF25C 00441024 */  and   $v0, $v0, $a0 # clear hide bit (show centered digit layer)
 /* 0E9910 800EF260 AC620000 */  sw    $v0, ($v1)
 
 .L3_800EF264:
 /* 0E9914 800EF264 24040006 */  li    $a0, 6
 
 .L3_800EF268:
-/* 0E9918 800EF268 0C03BDA6 */  jal   func3_800EF698
+/* 0E9918 800EF268 0C03BDA6 */  jal   func3_800EF698 # set/maintain referee outside-count animation state
 /* 0E991C 800EF26C 00002821 */   addu  $a1, $zero, $zero
 
 .L3_800EF270:
@@ -146099,7 +146105,7 @@ bss3_8015A444: .short 0
 # 8015A446 [h]
 bss3_8015A446: .short 0
 
-# 8015A448 [?]
+# 8015A448 [?] outside-count two-digit bright digit overlay slot 0
 bss3_8015A448: .word 0 # might not be a word?
 	.skip 0x10
 
@@ -146107,7 +146113,7 @@ bss3_8015A448: .word 0 # might not be a word?
 bss3_8015A45C: .word 0
 	.skip 0xC4
 
-# 8015A524 [?]
+# 8015A524 [?] outside-count centered one-digit bright overlay
 bss3_8015A524: .word 0 # might not be a word?
 	.skip 0x10
 
@@ -146115,7 +146121,7 @@ bss3_8015A524: .word 0 # might not be a word?
 bss3_8015A538: .word 0
 	.skip 0xC4
 
-# 8015A600 [?]
+# 8015A600 [?] outside-count two-digit dark/outline digit overlay slot 0
 bss3_8015A600: .word 0 # might not be a word?
 	.skip 0x10
 
@@ -146123,7 +146129,7 @@ bss3_8015A600: .word 0 # might not be a word?
 bss3_8015A614: .word 0
 	.skip 0xC4
 
-# 8015A6DC [?]
+# 8015A6DC [?] outside-count centered one-digit dark/outline overlay
 bss3_8015A6DC: .word 0 # might not be a word?
 	.skip 0x10
 
@@ -146131,38 +146137,38 @@ bss3_8015A6DC: .word 0 # might not be a word?
 bss3_8015A6F0: .word 0
 	.skip 0xCC
 
-# 8015A7C0 [b?]
+# 8015A7C0 [b?] outside-count bright digit geometry/data
 bss3_8015A7C0: .byte 0
 	.skip 0x207
 
-# 8015A9C8 [b?]
+# 8015A9C8 [b?] outside-count centered bright digit geometry/data
 bss3_8015A9C8: .byte 0
 	.skip 0x207
 
-# 8015ABD0 [b?]
+# 8015ABD0 [b?] outside-count dark/outline digit geometry/data
 bss3_8015ABD0: .byte 0
 	.skip 0x207
 
-# 8015ADD8 [b?]
+# 8015ADD8 [b?] outside-count centered dark/outline digit geometry/data
 bss3_8015ADD8: .byte 0
 	.skip 0x207
 
-# 8015AFE0 [h]
+# 8015AFE0 [h] outside-count overlay animation/frame counter
 bss3_8015AFE0: .short 0
 
-# 8015AFE2 [h]
+# 8015AFE2 [h] currently displayed outside-count value
 bss3_8015AFE2: .short 0
 
-# 8015AFE4 [h]
+# 8015AFE4 [h] outside-count two-digit slot index cache
 bss3_8015AFE4: .short 0
 
-# 8015AFE6 [h]
+# 8015AFE6 [h] outside-count centered one-digit slot index cache
 bss3_8015AFE6: .short 0
 
-# 8015AFE8 [h]
+# 8015AFE8 [h] cached two-digit tens/ones digit values
 bss3_8015AFE8: .short 0
 
-# 8015AFEA [h]
+# 8015AFEA [h] cached centered one-digit value
 bss3_8015AFEA: .short 0
 
 # 8015AFEC [h]
