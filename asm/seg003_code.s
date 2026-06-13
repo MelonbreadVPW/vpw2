@@ -3359,10 +3359,13 @@ func3_800EF898:
 /* 0E9FA8 800EF8F8 27BD0018 */   addiu $sp, $sp, 0x18
 
 /*----------------------------------------------------------------------------*/
+# Starts the basic pinfall-count referee animation.  Unlike the nearby
+# rope-break/two-count helpers, this wrapper does not queue a big-message
+# script; it only delegates to func3_800EF698 with referee state 1.
 func3_800EF8FC:
 /* 0E9FAC 800EF8FC 27BDFFE8 */  addiu $sp, $sp, -0x18
 /* 0E9FB0 800EF900 AFBF0010 */  sw    $ra, 0x10($sp)
-/* 0E9FB4 800EF904 24040001 */  li    $a0, 1
+/* 0E9FB4 800EF904 24040001 */  li    $a0, 1 # referee state: pinfall count
 /* 0E9FB8 800EF908 0C03BDA6 */  jal   func3_800EF698
 /* 0E9FBC 800EF90C 00002821 */   addu  $a1, $zero, $zero
 
@@ -3371,10 +3374,13 @@ func3_800EF8FC:
 /* 0E9FC8 800EF918 27BD0018 */   addiu $sp, $sp, 0x18
 
 /*----------------------------------------------------------------------------*/
+# Starts the referee outside-count animation.  This is a thin wrapper around
+# func3_800EF698 with referee state 6 and does not queue a big-message script
+# by itself.
 func3_800EF91C:
 /* 0E9FCC 800EF91C 27BDFFE8 */  addiu $sp, $sp, -0x18
 /* 0E9FD0 800EF920 AFBF0010 */  sw    $ra, 0x10($sp)
-/* 0E9FD4 800EF924 24040006 */  li    $a0, 6
+/* 0E9FD4 800EF924 24040006 */  li    $a0, 6 # referee state: outside count
 /* 0E9FD8 800EF928 0C03BDA6 */  jal   func3_800EF698
 /* 0E9FDC 800EF92C 00002821 */   addu  $a1, $zero, $zero
 
@@ -3384,38 +3390,46 @@ func3_800EF91C:
 
 /*----------------------------------------------------------------------------*/
 # Params:
-# $a0 -
-
+# $a0 - down-points selector; 0 queues the plain DOWN message, nonzero queues
+#       DOWN + points with (($a0 - 1) * 4) stored in bss3_8015D784.
+#
+# Starts the outside-count referee animation and queues the DOWN/DOWN POINTS
+# big-message script when the channel is free and overlays are not suppressed.
 func3_800EF93C:
 /* 0E9FEC 800EF93C 27BDFFE8 */  addiu $sp, $sp, -0x18
 /* 0E9FF0 800EF940 AFB00010 */  sw    $s0, 0x10($sp)
 /* 0E9FF4 800EF944 00808021 */  addu  $s0, $a0, $zero
-/* 0E9FF8 800EF948 24040006 */  li    $a0, 6
+/* 0E9FF8 800EF948 24040006 */  li    $a0, 6 # referee state: outside count
 /* 0E9FFC 800EF94C AFBF0014 */  sw    $ra, 0x14($sp)
 /* 0EA000 800EF950 0C03BDA6 */  jal   func3_800EF698
 /* 0EA004 800EF954 00002821 */   addu  $a1, $zero, $zero
 
+# Zero selector uses the plain DOWN script; nonzero uses the points variant.
 /* 0EA008 800EF958 00101400 */  sll   $v0, $s0, 0x10
 /* 0EA00C 800EF95C 14400013 */  bnez  $v0, .L3_800EF9AC
 /* 0EA010 800EF960 00000000 */   nop   
 
+# Plain DOWN path: only install when no big-message is active.
 /* 0EA014 800EF964 3C028016 */  lui   $v0, %hi(bss3_8015D780) # $v0, 0x8016
 /* 0EA018 800EF968 8C42D780 */  lw    $v0, %lo(bss3_8015D780)($v0)
 /* 0EA01C 800EF96C 14400023 */  bnez  $v0, .L3_800EF9FC
 /* 0EA020 800EF970 00000000 */   nop   
 
+# Skip message install while overlays are globally suppressed.
 /* 0EA024 800EF974 0C050AE8 */  jal   func3_80142BA0
 /* 0EA028 800EF978 00000000 */   nop   
 
 /* 0EA02C 800EF97C 1440001F */  bnez  $v0, .L3_800EF9FC
 /* 0EA030 800EF980 00000000 */   nop   
 
+# Re-check the channel, then load the DOWN script pointer.
 /* 0EA034 800EF984 3C028016 */  lui   $v0, %hi(bss3_8015D780) # $v0, 0x8016
 /* 0EA038 800EF988 8C42D780 */  lw    $v0, %lo(bss3_8015D780)($v0)
 /* 0EA03C 800EF98C 3C038015 */  lui   $v1, %hi(D_80151BDC) # $v1, 0x8015
 /* 0EA040 800EF990 1440001A */  bnez  $v0, .L3_800EF9FC
 /* 0EA044 800EF994 8C631BDC */   lw    $v1, %lo(D_80151BDC)($v1)
 
+# Install DOWN and reset its aux offset/timer.
 /* 0EA048 800EF998 3C018016 */  lui   $at, %hi(bss3_8015D780) # $at, 0x8016
 /* 0EA04C 800EF99C AC23D780 */  sw    $v1, %lo(bss3_8015D780)($at)
 /* 0EA050 800EF9A0 3C018016 */  lui   $at, %hi(bss3_8015D784) # $at, 0x8016
@@ -3423,6 +3437,7 @@ func3_800EF93C:
 /* 0EA058 800EF9A8 A420D784 */   sh    $zero, %lo(bss3_8015D784)($at)
 
 .L3_800EF9AC:
+# DOWN POINTS path: same active-message/suppression gates as above.
 /* 0EA05C 800EF9AC 3C028016 */  lui   $v0, %hi(bss3_8015D780) # $v0, 0x8016
 /* 0EA060 800EF9B0 8C42D780 */  lw    $v0, %lo(bss3_8015D780)($v0)
 /* 0EA064 800EF9B4 14400011 */  bnez  $v0, .L3_800EF9FC
@@ -3434,6 +3449,7 @@ func3_800EF93C:
 /* 0EA074 800EF9C4 1440000D */  bnez  $v0, .L3_800EF9FC
 /* 0EA078 800EF9C8 00000000 */   nop   
 
+# Load the DOWN POINTS script pointer and compute the points glyph offset.
 /* 0EA07C 800EF9CC 3C028016 */  lui   $v0, %hi(bss3_8015D780) # $v0, 0x8016
 /* 0EA080 800EF9D0 8C42D780 */  lw    $v0, %lo(bss3_8015D780)($v0)
 /* 0EA084 800EF9D4 3C038015 */  lui   $v1, %hi(D_80151BE8) # $v1, 0x8015
@@ -3441,6 +3457,7 @@ func3_800EF93C:
 /* 0EA08C 800EF9DC 14400007 */  bnez  $v0, .L3_800EF9FC
 /* 0EA090 800EF9E0 2604FFFF */   addiu $a0, $s0, -1
 
+# Aux offset is four bytes per selector entry.
 /* 0EA094 800EF9E4 00041400 */  sll   $v0, $a0, 0x10
 /* 0EA098 800EF9E8 00021383 */  sra   $v0, $v0, 0xe
 /* 0EA09C 800EF9EC 3C018016 */  lui   $at, %hi(bss3_8015D780) # $at, 0x8016
@@ -3456,38 +3473,46 @@ func3_800EF93C:
 
 /*----------------------------------------------------------------------------*/
 # Params:
-# $a0 -
-
+# $a0 - suplex-points selector; 0 queues the plain SUPLEX message, nonzero
+#       queues SUPLEX + points with (($a0 - 1) * 4) in bss3_8015D784.
+#
+# Starts the rope-break referee animation and queues the SUPLEX/SUPLEX POINTS
+# big-message script when the channel is free and overlays are not suppressed.
 func3_800EFA0C:
 /* 0EA0BC 800EFA0C 27BDFFE8 */  addiu $sp, $sp, -0x18
 /* 0EA0C0 800EFA10 AFB00010 */  sw    $s0, 0x10($sp)
 /* 0EA0C4 800EFA14 00808021 */  addu  $s0, $a0, $zero
-/* 0EA0C8 800EFA18 24040008 */  li    $a0, 8
+/* 0EA0C8 800EFA18 24040008 */  li    $a0, 8 # referee state: rope break
 /* 0EA0CC 800EFA1C AFBF0014 */  sw    $ra, 0x14($sp)
 /* 0EA0D0 800EFA20 0C03BDA6 */  jal   func3_800EF698
 /* 0EA0D4 800EFA24 00002821 */   addu  $a1, $zero, $zero
 
+# Zero selector uses the plain SUPLEX script; nonzero uses the points variant.
 /* 0EA0D8 800EFA28 00101400 */  sll   $v0, $s0, 0x10
 /* 0EA0DC 800EFA2C 14400013 */  bnez  $v0, .L3_800EFA7C
 /* 0EA0E0 800EFA30 00000000 */   nop   
 
+# Plain SUPLEX path: only install when no big-message is active.
 /* 0EA0E4 800EFA34 3C028016 */  lui   $v0, %hi(bss3_8015D780) # $v0, 0x8016
 /* 0EA0E8 800EFA38 8C42D780 */  lw    $v0, %lo(bss3_8015D780)($v0)
 /* 0EA0EC 800EFA3C 14400023 */  bnez  $v0, .L3_800EFACC
 /* 0EA0F0 800EFA40 00000000 */   nop   
 
+# Skip message install while overlays are globally suppressed.
 /* 0EA0F4 800EFA44 0C050AE8 */  jal   func3_80142BA0
 /* 0EA0F8 800EFA48 00000000 */   nop   
 
 /* 0EA0FC 800EFA4C 1440001F */  bnez  $v0, .L3_800EFACC
 /* 0EA100 800EFA50 00000000 */   nop   
 
+# Re-check the channel, then load the SUPLEX script pointer.
 /* 0EA104 800EFA54 3C028016 */  lui   $v0, %hi(bss3_8015D780) # $v0, 0x8016
 /* 0EA108 800EFA58 8C42D780 */  lw    $v0, %lo(bss3_8015D780)($v0)
 /* 0EA10C 800EFA5C 3C038015 */  lui   $v1, %hi(D_80151BE0) # $v1, 0x8015
 /* 0EA110 800EFA60 1440001A */  bnez  $v0, .L3_800EFACC
 /* 0EA114 800EFA64 8C631BE0 */   lw    $v1, %lo(D_80151BE0)($v1)
 
+# Install SUPLEX and reset its aux offset/timer.
 /* 0EA118 800EFA68 3C018016 */  lui   $at, %hi(bss3_8015D780) # $at, 0x8016
 /* 0EA11C 800EFA6C AC23D780 */  sw    $v1, %lo(bss3_8015D780)($at)
 /* 0EA120 800EFA70 3C018016 */  lui   $at, %hi(bss3_8015D784) # $at, 0x8016
@@ -3495,6 +3520,7 @@ func3_800EFA0C:
 /* 0EA128 800EFA78 A420D784 */   sh    $zero, %lo(bss3_8015D784)($at)
 
 .L3_800EFA7C:
+# SUPLEX POINTS path: same active-message/suppression gates as above.
 /* 0EA12C 800EFA7C 3C028016 */  lui   $v0, %hi(bss3_8015D780) # $v0, 0x8016
 /* 0EA130 800EFA80 8C42D780 */  lw    $v0, %lo(bss3_8015D780)($v0)
 /* 0EA134 800EFA84 14400011 */  bnez  $v0, .L3_800EFACC
@@ -3506,6 +3532,7 @@ func3_800EFA0C:
 /* 0EA144 800EFA94 1440000D */  bnez  $v0, .L3_800EFACC
 /* 0EA148 800EFA98 00000000 */   nop   
 
+# Load the SUPLEX POINTS script pointer and compute the points glyph offset.
 /* 0EA14C 800EFA9C 3C028016 */  lui   $v0, %hi(bss3_8015D780) # $v0, 0x8016
 /* 0EA150 800EFAA0 8C42D780 */  lw    $v0, %lo(bss3_8015D780)($v0)
 /* 0EA154 800EFAA4 3C038015 */  lui   $v1, %hi(D_80151BEC) # $v1, 0x8015
@@ -3513,6 +3540,7 @@ func3_800EFA0C:
 /* 0EA15C 800EFAAC 14400007 */  bnez  $v0, .L3_800EFACC
 /* 0EA160 800EFAB0 2604FFFF */   addiu $a0, $s0, -1
 
+# Aux offset is four bytes per selector entry.
 /* 0EA164 800EFAB4 00041400 */  sll   $v0, $a0, 0x10
 /* 0EA168 800EFAB8 00021383 */  sra   $v0, $v0, 0xe
 /* 0EA16C 800EFABC 3C018016 */  lui   $at, %hi(bss3_8015D780) # $at, 0x8016
