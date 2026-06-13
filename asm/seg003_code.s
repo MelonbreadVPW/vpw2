@@ -4351,15 +4351,20 @@ func3_800F03A0:
 
 /*----------------------------------------------------------------------------*/
 # Params:
-# $a0 -
-# $a1 -
-
+# $a0 - wrestler/object state base
+# $a1 - transform scratch/state: x at +0, y/height at +4, z at +8,
+#       aux pointer at +0xC
+#
+# Updates a participant object's transform block at ($a0 + 0x1C).  It first
+# tests the X/Z pair, chooses a Y/height value of either 0 or 90.0, pushes the
+# aux pointer, then writes the final XYZ transform.
 func3_800F03E4:
 /* 0EAA94 800F03E4 27BDFFE0 */  addiu $sp, $sp, -0x20
 /* 0EAA98 800F03E8 AFB10014 */  sw    $s1, 0x14($sp)
 /* 0EAA9C 800F03EC 00A08821 */  addu  $s1, $a1, $zero
 /* 0EAAA0 800F03F0 AFBF0018 */  sw    $ra, 0x18($sp)
 /* 0EAAA4 800F03F4 AFB00010 */  sw    $s0, 0x10($sp)
+# Probe the X/Z position to choose whether this object should be raised.
 /* 0EAAA8 800F03F8 C62C0000 */  lwc1  $f12, ($s1)
 /* 0EAAAC 800F03FC C62E0008 */  lwc1  $f14, 8($s1)
 /* 0EAAB0 800F0400 0C00531C */  jal   func_80014C70
@@ -4369,12 +4374,14 @@ func3_800F03E4:
 /* 0EAABC 800F040C 50400005 */  beql  $v0, $zero, .L3_800F0424
 /* 0EAAC0 800F0410 AE200004 */   sw    $zero, 4($s1)
 
+# Nonzero probe result raises the object by 90 units; zero result stores 0.
 /* 0EAAC4 800F0414 3C0142B4 */  li    $at, 0x42B40000 # 90.000000
 /* 0EAAC8 800F0418 44810000 */  mtc1  $at, $f0
 /* 0EAACC 800F041C 00000000 */  nop   
 /* 0EAAD0 800F0420 E6200004 */  swc1  $f0, 4($s1)
 
 .L3_800F0424:
+# Update the object's transform sub-block with aux pointer and XYZ position.
 /* 0EAAD4 800F0424 8E25000C */  lw    $a1, 0xc($s1)
 /* 0EAAD8 800F0428 2610001C */  addiu $s0, $s0, 0x1c
 /* 0EAADC 800F042C 0C004339 */  jal   func_80010CE4
