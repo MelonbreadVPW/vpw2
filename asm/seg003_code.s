@@ -3556,38 +3556,48 @@ func3_800EFA0C:
 
 /*----------------------------------------------------------------------------*/
 # Params:
-# $a0 -
-
+# $a0 - rope-escape-points selector; 0 queues the plain ROPE ESCAPE message,
+#       nonzero queues ROPE ESCAPE + points with (($a0 - 1) * 4) in
+#       bss3_8015D784.
+#
+# Starts the rope-break referee animation and queues the ROPE ESCAPE/ROPE
+# ESCAPE POINTS big-message script when the channel is free and overlays are
+# not suppressed.
 func3_800EFADC:
 /* 0EA18C 800EFADC 27BDFFE8 */  addiu $sp, $sp, -0x18
 /* 0EA190 800EFAE0 AFB00010 */  sw    $s0, 0x10($sp)
 /* 0EA194 800EFAE4 00808021 */  addu  $s0, $a0, $zero
-/* 0EA198 800EFAE8 24040008 */  li    $a0, 8
+/* 0EA198 800EFAE8 24040008 */  li    $a0, 8 # referee state: rope break
 /* 0EA19C 800EFAEC AFBF0014 */  sw    $ra, 0x14($sp)
 /* 0EA1A0 800EFAF0 0C03BDA6 */  jal   func3_800EF698
 /* 0EA1A4 800EFAF4 00002821 */   addu  $a1, $zero, $zero
 
+# Zero selector uses the plain ROPE ESCAPE script; nonzero uses the points variant.
 /* 0EA1A8 800EFAF8 00101400 */  sll   $v0, $s0, 0x10
 /* 0EA1AC 800EFAFC 14400013 */  bnez  $v0, .L3_800EFB4C
 /* 0EA1B0 800EFB00 00000000 */   nop   
 
+# Plain ROPE ESCAPE path: only install when no big-message is active.
 /* 0EA1B4 800EFB04 3C028016 */  lui   $v0, %hi(bss3_8015D780) # $v0, 0x8016
 /* 0EA1B8 800EFB08 8C42D780 */  lw    $v0, %lo(bss3_8015D780)($v0)
 /* 0EA1BC 800EFB0C 14400023 */  bnez  $v0, .L3_800EFB9C
 /* 0EA1C0 800EFB10 00000000 */   nop   
 
+# Skip message install while overlays are globally suppressed.
 /* 0EA1C4 800EFB14 0C050AE8 */  jal   func3_80142BA0
 /* 0EA1C8 800EFB18 00000000 */   nop   
 
 /* 0EA1CC 800EFB1C 1440001F */  bnez  $v0, .L3_800EFB9C
 /* 0EA1D0 800EFB20 00000000 */   nop   
 
+# Re-check the channel, then load the ROPE ESCAPE script pointer.
 /* 0EA1D4 800EFB24 3C028016 */  lui   $v0, %hi(bss3_8015D780) # $v0, 0x8016
 /* 0EA1D8 800EFB28 8C42D780 */  lw    $v0, %lo(bss3_8015D780)($v0)
 /* 0EA1DC 800EFB2C 3C038015 */  lui   $v1, %hi(D_80151BE4) # $v1, 0x8015
 /* 0EA1E0 800EFB30 1440001A */  bnez  $v0, .L3_800EFB9C
 /* 0EA1E4 800EFB34 8C631BE4 */   lw    $v1, %lo(D_80151BE4)($v1)
 
+# Install ROPE ESCAPE and reset its aux offset/timer.
 /* 0EA1E8 800EFB38 3C018016 */  lui   $at, %hi(bss3_8015D780) # $at, 0x8016
 /* 0EA1EC 800EFB3C AC23D780 */  sw    $v1, %lo(bss3_8015D780)($at)
 /* 0EA1F0 800EFB40 3C018016 */  lui   $at, %hi(bss3_8015D784) # $at, 0x8016
@@ -3595,6 +3605,7 @@ func3_800EFADC:
 /* 0EA1F8 800EFB48 A420D784 */   sh    $zero, %lo(bss3_8015D784)($at)
 
 .L3_800EFB4C:
+# ROPE ESCAPE POINTS path: same active-message/suppression gates as above.
 /* 0EA1FC 800EFB4C 3C028016 */  lui   $v0, %hi(bss3_8015D780) # $v0, 0x8016
 /* 0EA200 800EFB50 8C42D780 */  lw    $v0, %lo(bss3_8015D780)($v0)
 /* 0EA204 800EFB54 14400011 */  bnez  $v0, .L3_800EFB9C
@@ -3606,6 +3617,7 @@ func3_800EFADC:
 /* 0EA214 800EFB64 1440000D */  bnez  $v0, .L3_800EFB9C
 /* 0EA218 800EFB68 00000000 */   nop   
 
+# Load the ROPE ESCAPE POINTS script pointer and compute the points glyph offset.
 /* 0EA21C 800EFB6C 3C028016 */  lui   $v0, %hi(bss3_8015D780) # $v0, 0x8016
 /* 0EA220 800EFB70 8C42D780 */  lw    $v0, %lo(bss3_8015D780)($v0)
 /* 0EA224 800EFB74 3C038015 */  lui   $v1, %hi(D_80151BF0) # $v1, 0x8015
@@ -3613,6 +3625,7 @@ func3_800EFADC:
 /* 0EA22C 800EFB7C 14400007 */  bnez  $v0, .L3_800EFB9C
 /* 0EA230 800EFB80 2604FFFF */   addiu $a0, $s0, -1
 
+# Aux offset is four bytes per selector entry.
 /* 0EA234 800EFB84 00041400 */  sll   $v0, $a0, 0x10
 /* 0EA238 800EFB88 00021383 */  sra   $v0, $v0, 0xe
 /* 0EA23C 800EFB8C 3C018016 */  lui   $at, %hi(bss3_8015D780) # $at, 0x8016
@@ -3627,12 +3640,16 @@ func3_800EFADC:
 /* 0EA258 800EFBA8 27BD0018 */   addiu $sp, $sp, 0x18
 
 /*----------------------------------------------------------------------------*/
+# Clears the active referee animation state.  If an animation was active, set
+# the state ID to 0 and give the updater a 120-frame timer; func3_800EF3BC then
+# treats state 0 as inactive and slides/hides the referee sprite.
 func3_800EFBAC:
 /* 0EA25C 800EFBAC 3C028016 */  lui   $v0, %hi(bss3_80159C92) # $v0, 0x8016
 /* 0EA260 800EFBB0 80429C92 */  lb    $v0, %lo(bss3_80159C92)($v0)
-/* 0EA264 800EFBB4 10400005 */  beqz  $v0, .L3_800EFBCC
+/* 0EA264 800EFBB4 10400005 */  beqz  $v0, .L3_800EFBCC # already inactive
 /* 0EA268 800EFBB8 24020078 */   li    $v0, 120
 
+# Mark no active animation and seed the inactive/slide-out timer.
 /* 0EA26C 800EFBBC 3C018016 */  lui   $at, %hi(bss3_80159C92) # $at, 0x8016
 /* 0EA270 800EFBC0 A0209C92 */  sb    $zero, %lo(bss3_80159C92)($at)
 /* 0EA274 800EFBC4 3C018016 */  lui   $at, %hi(bss3_80159C8C) # $at, 0x8016
@@ -3644,20 +3661,24 @@ func3_800EFBAC:
 
 /*----------------------------------------------------------------------------*/
 # Params:
-# $a0 -
-
+# $a0 - mode/state selector; value 2 suppresses the refresh.
+#
+# Refreshes the round-start/fight referee flow by replaying referee state 9 with
+# the cached round/fight value in bss3_8015B7D2.  Selector 2 is a no-op, likely
+# for a mode that should not restart the fight/round overlay.
 func3_800EFBD4:
 /* 0EA284 800EFBD4 27BDFFE8 */  addiu $sp, $sp, -0x18
 /* 0EA288 800EFBD8 00042400 */  sll   $a0, $a0, 0x10
 /* 0EA28C 800EFBDC 00042403 */  sra   $a0, $a0, 0x10
 /* 0EA290 800EFBE0 24020002 */  li    $v0, 2
-/* 0EA294 800EFBE4 10820005 */  beq   $a0, $v0, .L3_800EFBFC
+/* 0EA294 800EFBE4 10820005 */  beq   $a0, $v0, .L3_800EFBFC # selector 2: leave state unchanged
 /* 0EA298 800EFBE8 AFBF0010 */   sw    $ra, 0x10($sp)
 
+# Reuse the last cached round/fight value as func3_800EF698 state-9 input.
 /* 0EA29C 800EFBEC 3C058016 */  lui   $a1, %hi(bss3_8015B7D2) # $a1, 0x8016
 /* 0EA2A0 800EFBF0 84A5B7D2 */  lh    $a1, %lo(bss3_8015B7D2)($a1)
 /* 0EA2A4 800EFBF4 0C03BDA6 */  jal   func3_800EF698
-/* 0EA2A8 800EFBF8 24040009 */   li    $a0, 9
+/* 0EA2A8 800EFBF8 24040009 */   li    $a0, 9 # referee state: round-start/fight flow
 
 .L3_800EFBFC:
 /* 0EA2AC 800EFBFC 8FBF0010 */  lw    $ra, 0x10($sp)
@@ -3670,10 +3691,12 @@ func3_800EFBD4:
 /*============================================================================*/
 /* --- file break --- */
 
-# match setup code?
-
+# Initializes the match scene/arena state for up to four wrestler slots.
+# This routine applies the monochrome option, clears scene/camera globals,
+# creates the base scene objects, loads arena/player assets, initializes each
+# active slot, then sets up HUD/sound tables before returning.
 func3_800EFC10:
-# load monochrome option
+# Load monochrome option.
 /* 0EA2C0 800EFC10 3C03800A */  lui   $v1, %hi(bssMain_800A4055) # $v1, 0x800a
 /* 0EA2C4 800EFC14 90634055 */  lbu   $v1, %lo(bssMain_800A4055)($v1)
 /* 0EA2C8 800EFC18 27BDFFA0 */  addiu $sp, $sp, -0x60
@@ -3690,6 +3713,7 @@ func3_800EFC10:
 /* 0EA2F4 800EFC44 F7B60058 */  sdc1  $f22, 0x58($sp)
 /* 0EA2F8 800EFC48 F7B40050 */  sdc1  $f20, 0x50($sp)
 
+# Continuation label after the standard prologue; not a separate callable setup.
 func3_800EFC4C:
 /* 0EA2FC 800EFC4C 10620004 */  beq   $v1, $v0, .L3_800EFC60
 /* 0EA300 800EFC50 24020001 */   li    $v0, 1
@@ -3705,6 +3729,7 @@ func3_800EFC4C:
 /* 0EA314 800EFC64 A422FDB0 */  sh    $v0, %lo(var_8003FDB0)($at)
 
 .L3_800EFC68:
+# Initialize the scene heap/pool and root scene object.
 /* 0EA318 800EFC68 0C000534 */  jal   func_800014D0
 /* 0EA31C 800EFC6C 240401E0 */   li    $a0, 480
 
@@ -3721,6 +3746,7 @@ func3_800EFC4C:
 /* 0EA340 800EFC90 3C038017 */  lui   $v1, %hi(bss3_80175124) # $v1, 0x8017
 /* 0EA344 800EFC94 24635124 */  addiu $v1, %lo(bss3_80175124) # addiu $v1, $v1, 0x5124
 
+# Count non-negative entries in the four-slot participant table.
 .L3_800EFC98:
 /* 0EA348 800EFC98 84620000 */  lh    $v0, ($v1)
 /* 0EA34C 800EFC9C 04400006 */  bltz  $v0, .L3_800EFCB8
@@ -3737,6 +3763,7 @@ func3_800EFC4C:
 /* 0EA36C 800EFCBC 1440FFF6 */  bnez  $v0, .L3_800EFC98
 /* 0EA370 800EFCC0 24630002 */   addiu $v1, $v1, 2
 
+# Seed camera/scene position globals with default ring-view coordinates.
 /* 0EA374 800EFCC4 3C0143C8 */  li    $at, 0x43C80000 # 400.000000
 /* 0EA378 800EFCC8 4481B000 */  mtc1  $at, $f22
 /* 0EA37C 800EFCCC 3C0143FA */  li    $at, 0x43FA0000 # 500.000000
@@ -3756,6 +3783,7 @@ func3_800EFC4C:
 /* 0EA3B4 800EFD04 E420D950 */  swc1  $f0, %lo(bss3_8015D950)($at)
 /* 0EA3B8 800EFD08 3C018016 */  lui   $at, %hi(bss3_8015D958) # $at, 0x8016
 /* 0EA3BC 800EFD0C E422D958 */  swc1  $f2, %lo(bss3_8015D958)($at)
+# Clear per-slot scene object pointers before creating objects below.
 /* 0EA3C0 800EFD10 0C03C117 */  jal   func3_800F045C
 /* 0EA3C4 800EFD14 00009821 */   addu  $s3, $zero, $zero
 
@@ -3781,6 +3809,7 @@ func3_800EFC4C:
 /* 0EA414 800EFD64 0C0037E2 */  jal   func_8000DF88
 /* 0EA418 800EFD68 E7A40018 */   swc1  $f4, 0x18($sp)
 
+# Build the second base scene object with the same transform defaults.
 /* 0EA41C 800EFD6C 8E450000 */  lw    $a1, ($s2)
 /* 0EA420 800EFD70 3C068016 */  lui   $a2, %hi(bss3_8015D8E8) # $a2, 0x8016
 /* 0EA424 800EFD74 8CC6D8E8 */  lw    $a2, %lo(bss3_8015D8E8)($a2)
@@ -3865,6 +3894,7 @@ func3_800EFC4C:
 /* 0EA544 800EFE94 0C008173 */  jal   func_800205CC
 /* 0EA548 800EFE98 00000000 */   nop   
 
+# Initialize each of the four wrestler/participant slots.
 .L3_800EFE9C:
 /* 0EA54C 800EFE9C 86A20000 */  lh    $v0, ($s5)
 /* 0EA550 800EFEA0 1C400003 */  bgtz  $v0, .L3_800EFEB0
@@ -3946,6 +3976,7 @@ func3_800EFC4C:
 /* 0EA644 800EFF94 1440FFC1 */  bnez  $v0, .L3_800EFE9C
 /* 0EA648 800EFF98 26D60004 */   addiu $s6, $s6, 4
 
+# Create and configure the shared overlay/HUD scene object.
 /* 0EA64C 800EFF9C 3C108016 */  lui   $s0, %hi(bss3_8015D808) # $s0, 0x8016
 /* 0EA650 800EFFA0 2610D808 */  addiu $s0, %lo(bss3_8015D808) # addiu $s0, $s0, -0x27f8
 /* 0EA654 800EFFA4 02002021 */  addu  $a0, $s0, $zero
@@ -3974,6 +4005,7 @@ func3_800EFC4C:
 /* 0EA6A4 800EFFF4 0C005C77 */  jal   func_800171DC
 /* 0EA6A8 800EFFF8 00000000 */   nop   
 
+# Final setup: HUD elements and sound tables.
 func3_800EFFFC:
 /* 0EA6AC 800EFFFC 3C048016 */  lui   $a0, %hi(bss3_8015D800+1) # $a0, 0x8016
 /* 0EA6B0 800F0000 0C03AA8A */  jal   func3_800EAA28
