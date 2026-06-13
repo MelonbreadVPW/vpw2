@@ -3272,30 +3272,39 @@ func3_800EF698:
 /* 0E9EE0 800EF830 27BD0018 */   addiu $sp, $sp, 0x18
 
 /*----------------------------------------------------------------------------*/
+# Starts the rope-break referee animation and, if the big-message channel is
+# free, queues the ROPE BREAK big-message script.  The display/suppression check
+# mirrors other scoring-message helpers: do not install a script while a message
+# is already active or while func3_80142BA0 says the overlay should be hidden.
 func3_800EF834:
 /* 0E9EE4 800EF834 27BDFFE8 */  addiu $sp, $sp, -0x18
-/* 0E9EE8 800EF838 24040008 */  li    $a0, 8
+/* 0E9EE8 800EF838 24040008 */  li    $a0, 8 # referee state: rope break
 /* 0E9EEC 800EF83C AFBF0010 */  sw    $ra, 0x10($sp)
 /* 0E9EF0 800EF840 0C03BDA6 */  jal   func3_800EF698
 /* 0E9EF4 800EF844 00002821 */   addu  $a1, $zero, $zero
 
+# If another big-message script is already running, leave it alone.
 /* 0E9EF8 800EF848 3C028016 */  lui   $v0, %hi(bss3_8015D780) # $v0, 0x8016
 /* 0E9EFC 800EF84C 8C42D780 */  lw    $v0, %lo(bss3_8015D780)($v0)
 /* 0E9F00 800EF850 1440000E */  bnez  $v0, .L3_800EF88C
 /* 0E9F04 800EF854 00000000 */   nop   
 
+# Respect the same global overlay suppression used by the referee draw path.
 /* 0E9F08 800EF858 0C050AE8 */  jal   func3_80142BA0
 /* 0E9F0C 800EF85C 00000000 */   nop   
 
 /* 0E9F10 800EF860 1440000A */  bnez  $v0, .L3_800EF88C
 /* 0E9F14 800EF864 00000000 */   nop   
 
+# Re-check the message channel after the suppression helper, then load the
+# ROPE BREAK script pointer from its one-entry pointer cell.
 /* 0E9F18 800EF868 3C028016 */  lui   $v0, %hi(bss3_8015D780) # $v0, 0x8016
 /* 0E9F1C 800EF86C 8C42D780 */  lw    $v0, %lo(bss3_8015D780)($v0)
 /* 0E9F20 800EF870 3C038015 */  lui   $v1, %hi(D_80151BD4) # $v1, 0x8015
 /* 0E9F24 800EF874 14400005 */  bnez  $v0, .L3_800EF88C
 /* 0E9F28 800EF878 8C631BD4 */   lw    $v1, %lo(D_80151BD4)($v1)
 
+# Install the script and reset its aux offset/timer.
 /* 0E9F2C 800EF87C 3C018016 */  lui   $at, %hi(bss3_8015D780) # $at, 0x8016
 /* 0E9F30 800EF880 AC23D780 */  sw    $v1, %lo(bss3_8015D780)($at)
 /* 0E9F34 800EF884 3C018016 */  lui   $at, %hi(bss3_8015D784) # $at, 0x8016
@@ -135964,6 +135973,7 @@ ptrTbl_BigMessages2:
 	.word BigMessage_DoubleRingOut
 	.word BigMessage_Draw
 
+# 80151BD4 [w] (0x5E4 offset into data003)
 D_80151BD4:
 	.word BigMessage_RopeBreak
 
