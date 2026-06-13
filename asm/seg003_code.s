@@ -4035,6 +4035,14 @@ func3_800EFFFC:
 /* 0EA700 800F0050 27BD0060 */   addiu $sp, $sp, 0x60
 
 /*----------------------------------------------------------------------------*/
+# Params:
+# $a0 - update mode/phase flag; forwarded to func3_800F0528 and later ORed
+#       with bss3_8016C010 before the global scene update call.
+#
+# Per-frame match scene update.  Captures overlay suppression state, updates the
+# active camera/scene transform buffer, iterates the four participant slots to
+# refresh object state, runs global stage/HUD systems, then flips the scene
+# transform buffer index in D_801520F4 and increments D_801520F8.
 func3_800F0054:
 /* 0EA704 800F0054 27BDFFB8 */  addiu $sp, $sp, -0x48
 /* 0EA708 800F0058 AFB10024 */  sw    $s1, 0x24($sp)
@@ -4046,6 +4054,7 @@ func3_800F0054:
 /* 0EA720 800F0070 AFB20028 */  sw    $s2, 0x28($sp)
 /* 0EA724 800F0074 AFB00020 */  sw    $s0, 0x20($sp)
 /* 0EA728 800F0078 F7B40040 */  sdc1  $f20, 0x40($sp)
+# Cache current overlay suppression state for later stage-system gating.
 /* 0EA72C 800F007C 0C050AE8 */  jal   func3_80142BA0
 /* 0EA730 800F0080 00808821 */   addu  $s1, $a0, $zero
 
@@ -4053,9 +4062,11 @@ func3_800F0054:
 /* 0EA738 800F0088 00108403 */  sra   $s0, $s0, 0x10
 /* 0EA73C 800F008C 3C01800A */  lui   $at, %hi(bssMain_800A44A0) # $at, 0x800a
 /* 0EA740 800F0090 A02244A0 */  sb    $v0, %lo(bssMain_800A44A0)($at)
+# Apply/update mode-specific match state before transforms are pushed.
 /* 0EA744 800F0094 0C03C14A */  jal   func3_800F0528
 /* 0EA748 800F0098 02002021 */   addu  $a0, $s0, $zero
 
+# Push the current camera/scene transform into the active double-buffer slot.
 /* 0EA74C 800F009C 3C068016 */  lui   $a2, %hi(bss3_8015D8E4) # $a2, 0x8016
 /* 0EA750 800F00A0 8CC6D8E4 */  lw    $a2, %lo(bss3_8015D8E4)($a2)
 /* 0EA754 800F00A4 3C028015 */  lui   $v0, %hi(D_801520F4) # $v0, 0x8015
@@ -4101,6 +4112,7 @@ func3_800F0054:
 /* 0EA7E8 800F0138 00000000 */   nop   
 
 .L3_800F013C:
+# Walk all four participant slots and update active wrestler scene objects.
 /* 0EA7EC 800F013C 00009021 */  addu  $s2, $zero, $zero
 /* 0EA7F0 800F0140 0000A021 */  addu  $s4, $zero, $zero
 /* 0EA7F4 800F0144 00008821 */  addu  $s1, $zero, $zero
@@ -4140,6 +4152,7 @@ func3_800F0054:
 /* 0EA85C 800F01AC 0C005290 */  jal   func_80014A40
 /* 0EA860 800F01B0 02002021 */   addu  $a0, $s0, $zero
 
+# Periodically attach the participant object to the shared transform object.
 /* 0EA864 800F01B4 3C038016 */  lui   $v1, %hi(bss3_8015D800) # $v1, 0x8016
 /* 0EA868 800F01B8 8463D800 */  lh    $v1, %lo(bss3_8015D800)($v1)
 /* 0EA86C 800F01BC 3C028015 */  lui   $v0, %hi(D_801520F8) # $v0, 0x8015
@@ -4178,6 +4191,7 @@ func3_800F0054:
 /* 0EA8D4 800F0224 1440FFCA */  bnez  $v0, .L3_800F0150
 /* 0EA8D8 800F0228 26730002 */   addiu $s3, $s3, 2
 
+# Mode 0 may run extra stage systems unless overlay suppression blocks them.
 /* 0EA8DC 800F022C 00161400 */  sll   $v0, $s6, 0x10
 /* 0EA8E0 800F0230 1440000F */  bnez  $v0, .L3_800F0270
 /* 0EA8E4 800F0234 00000000 */   nop   
@@ -4204,6 +4218,7 @@ func3_800F0054:
 /* 0EA91C 800F026C 00000000 */   nop   
 
 .L3_800F0270:
+# Run global scene/HUD/audio update hooks for this frame.
 /* 0EA920 800F0270 3C048017 */  lui   $a0, %hi(bss3_8016C010) # $a0, 0x8017
 /* 0EA924 800F0274 9484C010 */  lhu   $a0, %lo(bss3_8016C010)($a0)
 /* 0EA928 800F0278 02C42025 */  or    $a0, $s6, $a0
@@ -4230,6 +4245,7 @@ func3_800F0054:
 /* 0EA964 800F02B4 0C0056D8 */  jal   func_80015B60
 /* 0EA968 800F02B8 00000000 */   nop   
 
+# Submit the active transform buffer, then flip buffers and bump frame counter.
 /* 0EA96C 800F02BC 3C048015 */  lui   $a0, %hi(D_801520F4) # $a0, 0x8015
 /* 0EA970 800F02C0 8C8420F4 */  lw    $a0, %lo(D_801520F4)($a0)
 /* 0EA974 800F02C4 3C028016 */  lui   $v0, %hi(bss3_8015D7A0) # $v0, 0x8016
@@ -4261,10 +4277,14 @@ func3_800F0054:
 /* 0EA9D8 800F0328 27BD0048 */   addiu $sp, $sp, 0x48
 
 /*----------------------------------------------------------------------------*/
+# Tears down/resets match scene state.  Clears per-slot wrestler objects/flags,
+# destroys the shared overlay object, runs stage/system shutdown hooks, then
+# falls through the final cleanup label at func3_800F03A0.
 func3_800F032C:
 /* 0EA9DC 800F032C 27BDFFE0 */  addiu $sp, $sp, -0x20
 /* 0EA9E0 800F0330 AFBF0018 */  sw    $ra, 0x18($sp)
 /* 0EA9E4 800F0334 AFB10014 */  sw    $s1, 0x14($sp)
+# Reset/free the scene graph before clearing participant slots.
 /* 0EA9E8 800F0338 0C000CDD */  jal   func_80003374
 /* 0EA9EC 800F033C AFB00010 */   sw    $s0, 0x10($sp)
 
@@ -4273,6 +4293,7 @@ func3_800F032C:
 /* 0EA9F8 800F0348 26315124 */  addiu $s1, %lo(bss3_80175124) # addiu $s1, $s1, 0x5124
 
 .L3_800F034C:
+# Clear all four wrestler objects and their per-slot update flags.
 /* 0EA9FC 800F034C 00102400 */  sll   $a0, $s0, 0x10
 /* 0EAA00 800F0350 0C0052AB */  jal   func_80014AAC
 /* 0EAA04 800F0354 00042403 */   sra   $a0, $a0, 0x10
@@ -4285,6 +4306,7 @@ func3_800F032C:
 /* 0EAA1C 800F036C 1440FFF7 */  bnez  $v0, .L3_800F034C
 /* 0EAA20 800F0370 26310002 */   addiu $s1, $s1, 2
 
+# Run global scene/stage shutdown hooks and destroy the shared overlay object.
 /* 0EAA24 800F0374 0C00862B */  jal   func_800218AC
 /* 0EAA28 800F0378 00000000 */   nop   
 
@@ -4301,6 +4323,7 @@ func3_800F032C:
 /* 0EAA48 800F0398 0C00813F */  jal   func_800204FC
 /* 0EAA4C 800F039C 00000000 */   nop  
  
+# Final cleanup continuation; no separate prologue from func3_800F032C.
 func3_800F03A0:
 /* 0EAA50 800F03A0 0C0046AA */  jal   func_80011AA8
 /* 0EAA54 800F03A4 00000000 */   nop   
@@ -4317,7 +4340,7 @@ func3_800F03A0:
 /* 0EAA70 800F03C0 0C005BF3 */  jal   func_80016FCC
 /* 0EAA74 800F03C4 00000000 */   nop   
 
-# disable monochrome mode
+# Disable monochrome mode on teardown.
 /* 0EAA78 800F03C8 3C018004 */  lui   $at, %hi(var_8003FDB0) # $at, 0x8004
 /* 0EAA7C 800F03CC A420FDB0 */  sh    $zero, %lo(var_8003FDB0)($at)
 /* 0EAA80 800F03D0 8FBF0018 */  lw    $ra, 0x18($sp)
@@ -4328,15 +4351,20 @@ func3_800F03A0:
 
 /*----------------------------------------------------------------------------*/
 # Params:
-# $a0 -
-# $a1 -
-
+# $a0 - wrestler/object state base
+# $a1 - transform scratch/state: x at +0, y/height at +4, z at +8,
+#       aux pointer at +0xC
+#
+# Updates a participant object's transform block at ($a0 + 0x1C).  It first
+# tests the X/Z pair, chooses a Y/height value of either 0 or 90.0, pushes the
+# aux pointer, then writes the final XYZ transform.
 func3_800F03E4:
 /* 0EAA94 800F03E4 27BDFFE0 */  addiu $sp, $sp, -0x20
 /* 0EAA98 800F03E8 AFB10014 */  sw    $s1, 0x14($sp)
 /* 0EAA9C 800F03EC 00A08821 */  addu  $s1, $a1, $zero
 /* 0EAAA0 800F03F0 AFBF0018 */  sw    $ra, 0x18($sp)
 /* 0EAAA4 800F03F4 AFB00010 */  sw    $s0, 0x10($sp)
+# Probe the X/Z position to choose whether this object should be raised.
 /* 0EAAA8 800F03F8 C62C0000 */  lwc1  $f12, ($s1)
 /* 0EAAAC 800F03FC C62E0008 */  lwc1  $f14, 8($s1)
 /* 0EAAB0 800F0400 0C00531C */  jal   func_80014C70
@@ -4346,12 +4374,14 @@ func3_800F03E4:
 /* 0EAABC 800F040C 50400005 */  beql  $v0, $zero, .L3_800F0424
 /* 0EAAC0 800F0410 AE200004 */   sw    $zero, 4($s1)
 
+# Nonzero probe result raises the object by 90 units; zero result stores 0.
 /* 0EAAC4 800F0414 3C0142B4 */  li    $at, 0x42B40000 # 90.000000
 /* 0EAAC8 800F0418 44810000 */  mtc1  $at, $f0
 /* 0EAACC 800F041C 00000000 */  nop   
 /* 0EAAD0 800F0420 E6200004 */  swc1  $f0, 4($s1)
 
 .L3_800F0424:
+# Update the object's transform sub-block with aux pointer and XYZ position.
 /* 0EAAD4 800F0424 8E25000C */  lw    $a1, 0xc($s1)
 /* 0EAAD8 800F0428 2610001C */  addiu $s0, $s0, 0x1c
 /* 0EAADC 800F042C 0C004339 */  jal   func_80010CE4
@@ -4371,9 +4401,14 @@ func3_800F03E4:
 
 /*----------------------------------------------------------------------------*/
 # Params:
-# $a0 -
-
+# $a0 - source camera/scene transform vector: x,y,z,rot?/target? fields at
+#       +0x00..+0x14.
+#
+# Copies a six-float transform into the global camera/scene transform globals
+# used by func3_800F0054, negating the Z-like components at +0x08 and +0x14 to
+# match the engine coordinate convention.
 func3_800F045C:
+# Copy X/Y and negated Z into the global transform source.
 /* 0EAB0C 800F045C C4800000 */  lwc1  $f0, ($a0)
 /* 0EAB10 800F0460 3C018016 */  lui   $at, %hi(bss3_8015D8E4) # $at, 0x8016
 /* 0EAB14 800F0464 E420D8E4 */  swc1  $f0, %lo(bss3_8015D8E4)($at)
@@ -4384,6 +4419,7 @@ func3_800F045C:
 /* 0EAB28 800F0478 46000007 */  neg.s $f0, $f0
 /* 0EAB2C 800F047C 3C018016 */  lui   $at, %hi(bss3_8015D8EC) # $at, 0x8016
 /* 0EAB30 800F0480 E420D8EC */  swc1  $f0, %lo(bss3_8015D8EC)($at)
+# Copy secondary transform components, again negating the Z-like component.
 /* 0EAB34 800F0484 C480000C */  lwc1  $f0, 0xc($a0)
 /* 0EAB38 800F0488 3C018016 */  lui   $at, %hi(bss3_8015D8F0) # $at, 0x8016
 /* 0EAB3C 800F048C E420D8F0 */  swc1  $f0, %lo(bss3_8015D8F0)($at)
@@ -4398,10 +4434,15 @@ func3_800F045C:
 
 /*----------------------------------------------------------------------------*/
 # Params:
-# $a0 -
-
+# $a0 - selector/input value; negative disables the derived index.
+# Returns nonzero when the derived index in bss3_8015D960 is positive.
+#
+# Stores the raw selector in bss3_8015D962, derives a bounded index via
+# func_80009F44 for non-negative selectors, maps values < 0x20 to +0x13, and
+# otherwise stores -1.
 func3_800F04B0:
 /* 0EAB60 800F04B0 27BDFFE8 */  addiu $sp, $sp, -0x18
+# Preserve the caller selector separately from the derived/validated index.
 /* 0EAB64 800F04B4 3C018016 */  lui   $at, %hi(bss3_8015D962) # $at, 0x8016
 /* 0EAB68 800F04B8 A424D962 */  sh    $a0, %lo(bss3_8015D962)($at)
 /* 0EAB6C 800F04BC 00042400 */  sll   $a0, $a0, 0x10
@@ -4409,12 +4450,14 @@ func3_800F04B0:
 /* 0EAB74 800F04C4 0480000C */  bltz  $a0, .L3_800F04F8
 /* 0EAB78 800F04C8 AFBF0010 */   sw    $ra, 0x10($sp)
 
+# Non-negative selectors request a derived index from the helper.
 /* 0EAB7C 800F04CC 0C0027D1 */  jal   func_80009F44
 /* 0EAB80 800F04D0 00000000 */   nop   
 
 /* 0EAB84 800F04D4 00401821 */  addu  $v1, $v0, $zero
 /* 0EAB88 800F04D8 3C018016 */  lui   $at, %hi(bss3_8015D960) # $at, 0x8016
 /* 0EAB8C 800F04DC A423D960 */  sh    $v1, %lo(bss3_8015D960)($at)
+# Only helper results below 0x20 are accepted, then shifted into index range.
 /* 0EAB90 800F04E0 3062FFFF */  andi  $v0, $v1, 0xffff
 /* 0EAB94 800F04E4 2C420020 */  sltiu $v0, $v0, 0x20
 /* 0EAB98 800F04E8 50400004 */  beql  $v0, $zero, .L3_800F04FC
@@ -4424,11 +4467,13 @@ func3_800F04B0:
 /* 0EABA4 800F04F4 24620013 */   addiu $v0, $v1, 0x13
 
 .L3_800F04F8:
+# Negative selector or out-of-range helper result disables the index.
 /* 0EABA8 800F04F8 2402FFFF */  li    $v0, -1
 
 .L3_800F04FC:
 /* 0EABAC 800F04FC 3C018016 */  lui   $at, %hi(bss3_8015D960) # $at, 0x8016
 /* 0EABB0 800F0500 A422D960 */  sh    $v0, %lo(bss3_8015D960)($at)
+# Return true iff the stored derived index is positive.
 /* 0EABB4 800F0504 3C028016 */  lui   $v0, %hi(bss3_8015D960) # $v0, 0x8016
 /* 0EABB8 800F0508 8442D960 */  lh    $v0, %lo(bss3_8015D960)($v0)
 /* 0EABBC 800F050C 8FBF0010 */  lw    $ra, 0x10($sp)
