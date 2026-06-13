@@ -3112,9 +3112,19 @@ func3_800EF3BC:
 
 /*----------------------------------------------------------------------------*/
 # Params:
-# $a0 -
-# $a1 -
-
+# $a0 - referee animation state ID
+#       1 pinfall count, 2 two-count, 3 pinfall victory, 4 check submission,
+#       5 tap-out victory, 6 outside count, 7 counted-out victory,
+#       8 rope break, 9 round-start/fight flow, 10 match-over generic,
+#       11 fight/round-start animation.
+# $a1 - round/fight flow value when $a0 == 9; otherwise ignored.
+#
+# Starts or resets a referee-side overlay animation.  Most callers pass a
+# referee animation state directly; state 9 is special because it also tracks
+# round/fight transitions and queues the corresponding big-message script
+# (FIGHT, FIGHT round number, or FINAL ROUND) when no other big-message script
+# is active.  The active animation is consumed by func3_800EF3BC, which advances
+# bss3_80159C8C/8D and renders the selected frame.
 func3_800EF698:
 /* 0E9D48 800EF698 27BDFFE8 */  addiu $sp, $sp, -0x18
 /* 0E9D4C 800EF69C AFBF0010 */  sw    $ra, 0x10($sp)
@@ -3125,6 +3135,7 @@ func3_800EF698:
 /* 0E9D60 800EF6B0 14820037 */  bne   $a0, $v0, .L3_800EF790
 /* 0E9D64 800EF6B4 00A03021 */   addu  $a2, $a1, $zero
 
+# State 9 is the round-start/fight state: remember the incoming value.
 /* 0E9D68 800EF6B8 3C018016 */  lui   $at, %hi(bss3_8015B7D2) # $at, 0x8016
 /* 0E9D6C 800EF6BC A426B7D2 */  sh    $a2, %lo(bss3_8015B7D2)($at)
 /* 0E9D70 800EF6C0 00051400 */  sll   $v0, $a1, 0x10
@@ -3132,6 +3143,7 @@ func3_800EF698:
 /* 0E9D78 800EF6C8 1860002F */  blez  $v1, .L3_800EF788
 /* 0E9D7C 800EF6CC 2402FFFF */   li    $v0, -1
 
+# Positive values only queue a new message when the round value changes.
 /* 0E9D80 800EF6D0 3C028016 */  lui   $v0, %hi(bss3_8015B7D4) # $v0, 0x8016
 /* 0E9D84 800EF6D4 8442B7D4 */  lh    $v0, %lo(bss3_8015B7D4)($v0)
 /* 0E9D88 800EF6D8 1062002D */  beq   $v1, $v0, .L3_800EF790
@@ -3141,6 +3153,7 @@ func3_800EF698:
 /* 0E9D94 800EF6E4 14600006 */  bnez  $v1, .L3_800EF700
 /* 0E9D98 800EF6E8 A426B7D4 */   sh    $a2, %lo(bss3_8015B7D4)($at)
 
+# Value 0 transitions back to the base FIGHT message.
 /* 0E9D9C 800EF6EC 3C028016 */  lui   $v0, %hi(bss3_8015D780) # $v0, 0x8016
 /* 0E9DA0 800EF6F0 8C42D780 */  lw    $v0, %lo(bss3_8015D780)($v0)
 /* 0E9DA4 800EF6F4 3C038015 */  lui   $v1, %hi(BigMessage_Fight) # $v1, 0x8015
@@ -3148,6 +3161,7 @@ func3_800EF698:
 /* 0E9DAC 800EF6FC 246317A0 */   addiu $v1, %lo(BigMessage_Fight) # addiu $v1, $v1, 0x17a0
 
 .L3_800EF700:
+# Compare the requested round against the match round limit for this mode.
 /* 0E9DB0 800EF700 3C02800A */  lui   $v0, %hi(bssMain_8009FDC4) # $v0, 0x800a
 /* 0E9DB4 800EF704 8042FDC4 */  lb    $v0, %lo(bssMain_8009FDC4)($v0)
 /* 0E9DB8 800EF708 3C018015 */  lui   $at, %hi(tbl_8015201C)
@@ -3157,6 +3171,7 @@ func3_800EF698:
 /* 0E9DC8 800EF718 1040000E */  beqz  $v0, .L3_800EF754
 /* 0E9DCC 800EF71C 00000000 */   nop   
 
+# Intermediate round: queue FIGHT + numeric round suffix.
 /* 0E9DD0 800EF720 3C028016 */  lui   $v0, %hi(bss3_8015D780) # $v0, 0x8016
 /* 0E9DD4 800EF724 8C42D780 */  lw    $v0, %lo(bss3_8015D780)($v0)
 /* 0E9DD8 800EF728 3C038015 */  lui   $v1, %hi(BigMessage_FightRoundNum) # $v1, 0x8015
@@ -3173,6 +3188,7 @@ func3_800EF698:
 /* 0E9E00 800EF750 A422D784 */   sh    $v0, %lo(bss3_8015D784)($at)
 
 .L3_800EF754:
+# Round is at/above the configured limit: queue FINAL ROUND.
 /* 0E9E04 800EF754 3C028016 */  lui   $v0, %hi(bss3_8015D780) # $v0, 0x8016
 /* 0E9E08 800EF758 8C42D780 */  lw    $v0, %lo(bss3_8015D780)($v0)
 /* 0E9E0C 800EF75C 3C038015 */  lui   $v1, %hi(BigMessage_FightFinalRound) # $v1, 0x8015
@@ -3188,11 +3204,13 @@ func3_800EF698:
 /* 0E9E28 800EF778 A420D784 */  sh    $zero, %lo(bss3_8015D784)($at)
 
 .L3_800EF77C:
+# Reset the associated round/fight message timer once a message is queued.
 /* 0E9E2C 800EF77C 3C018016 */  lui   $at, %hi(bss3_8015B7D0) # $at, 0x8016
 /* 0E9E30 800EF780 0803BDE4 */  j     .L3_800EF790
 /* 0E9E34 800EF784 A420B7D0 */   sh    $zero, %lo(bss3_8015B7D0)($at)
 
 .L3_800EF788:
+# Non-positive values other than zero disable the cached round marker.
 /* 0E9E38 800EF788 3C018016 */  lui   $at, %hi(bss3_8015B7D4) # $at, 0x8016
 /* 0E9E3C 800EF78C A422B7D4 */  sh    $v0, %lo(bss3_8015B7D4)($at)
 
@@ -3203,6 +3221,7 @@ func3_800EF698:
 /* 0E9E48 800EF798 10400021 */  beqz  $v0, .L3_800EF820
 /* 0E9E4C 800EF79C 00072600 */   sll   $a0, $a3, 0x18
 
+# Start the requested referee frame sequence from frame index 0.
 /* 0E9E50 800EF7A0 00042583 */  sra   $a0, $a0, 0x16
 /* 0E9E54 800EF7A4 3C028015 */  lui   $v0, %hi(ptrTbl_RefereeFrames)
 /* 0E9E58 800EF7A8 00441021 */  addu  $v0, $v0, $a0
@@ -3211,6 +3230,8 @@ func3_800EF698:
 /* 0E9E64 800EF7B4 A0279C92 */  sb    $a3, %lo(bss3_80159C92)($at)
 /* 0E9E68 800EF7B8 3C018016 */  lui   $at, %hi(bss3_80159C8D) # $at, 0x8016
 /* 0E9E6C 800EF7BC A0209C8D */  sb    $zero, %lo(bss3_80159C8D)($at)
+# Use the second entry to seed the sprite/frame metadata index; the first
+# visible frame is then timed from the per-state duration table.
 /* 0E9E70 800EF7C0 90420001 */  lbu   $v0, 1($v0)
 /* 0E9E74 800EF7C4 3C018015 */  lui   $at, %hi(tbl_RefereeFrameTime_80151FE8)
 /* 0E9E78 800EF7C8 00240821 */  addu  $at, $at, $a0
@@ -3223,6 +3244,7 @@ func3_800EF698:
 /* 0E9E94 800EF7E4 00031843 */  sra   $v1, $v1, 1
 /* 0E9E98 800EF7E8 3C018016 */  lui   $at, %hi(bss3_80159C93) # $at, 0x8016
 /* 0E9E9C 800EF7EC A0239C93 */  sb    $v1, %lo(bss3_80159C93)($at)
+# Initial frame duration and vertical position depend on the frame group.
 /* 0E9EA0 800EF7F0 90820000 */  lbu   $v0, ($a0)
 /* 0E9EA4 800EF7F4 28630005 */  slti  $v1, $v1, 5
 /* 0E9EA8 800EF7F8 3C018016 */  lui   $at, %hi(bss3_80159C8C) # $at, 0x8016
@@ -3240,6 +3262,7 @@ func3_800EF698:
 /* 0E9ECC 800EF81C A4209C8A */   sh    $zero, %lo(bss3_80159C8A)($at)
 
 .L3_800EF820:
+# Global referee display disabled: clear any active referee animation instead.
 /* 0E9ED0 800EF820 0C03BEEB */  jal   func3_800EFBAC
 /* 0E9ED4 800EF824 00000000 */   nop   
 
@@ -3249,30 +3272,39 @@ func3_800EF698:
 /* 0E9EE0 800EF830 27BD0018 */   addiu $sp, $sp, 0x18
 
 /*----------------------------------------------------------------------------*/
+# Starts the rope-break referee animation and, if the big-message channel is
+# free, queues the ROPE BREAK big-message script.  The display/suppression check
+# mirrors other scoring-message helpers: do not install a script while a message
+# is already active or while func3_80142BA0 says the overlay should be hidden.
 func3_800EF834:
 /* 0E9EE4 800EF834 27BDFFE8 */  addiu $sp, $sp, -0x18
-/* 0E9EE8 800EF838 24040008 */  li    $a0, 8
+/* 0E9EE8 800EF838 24040008 */  li    $a0, 8 # referee state: rope break
 /* 0E9EEC 800EF83C AFBF0010 */  sw    $ra, 0x10($sp)
 /* 0E9EF0 800EF840 0C03BDA6 */  jal   func3_800EF698
 /* 0E9EF4 800EF844 00002821 */   addu  $a1, $zero, $zero
 
+# If another big-message script is already running, leave it alone.
 /* 0E9EF8 800EF848 3C028016 */  lui   $v0, %hi(bss3_8015D780) # $v0, 0x8016
 /* 0E9EFC 800EF84C 8C42D780 */  lw    $v0, %lo(bss3_8015D780)($v0)
 /* 0E9F00 800EF850 1440000E */  bnez  $v0, .L3_800EF88C
 /* 0E9F04 800EF854 00000000 */   nop   
 
+# Respect the same global overlay suppression used by the referee draw path.
 /* 0E9F08 800EF858 0C050AE8 */  jal   func3_80142BA0
 /* 0E9F0C 800EF85C 00000000 */   nop   
 
 /* 0E9F10 800EF860 1440000A */  bnez  $v0, .L3_800EF88C
 /* 0E9F14 800EF864 00000000 */   nop   
 
+# Re-check the message channel after the suppression helper, then load the
+# ROPE BREAK script pointer from its one-entry pointer cell.
 /* 0E9F18 800EF868 3C028016 */  lui   $v0, %hi(bss3_8015D780) # $v0, 0x8016
 /* 0E9F1C 800EF86C 8C42D780 */  lw    $v0, %lo(bss3_8015D780)($v0)
 /* 0E9F20 800EF870 3C038015 */  lui   $v1, %hi(D_80151BD4) # $v1, 0x8015
 /* 0E9F24 800EF874 14400005 */  bnez  $v0, .L3_800EF88C
 /* 0E9F28 800EF878 8C631BD4 */   lw    $v1, %lo(D_80151BD4)($v1)
 
+# Install the script and reset its aux offset/timer.
 /* 0E9F2C 800EF87C 3C018016 */  lui   $at, %hi(bss3_8015D780) # $at, 0x8016
 /* 0E9F30 800EF880 AC23D780 */  sw    $v1, %lo(bss3_8015D780)($at)
 /* 0E9F34 800EF884 3C018016 */  lui   $at, %hi(bss3_8015D784) # $at, 0x8016
@@ -135941,6 +135973,7 @@ ptrTbl_BigMessages2:
 	.word BigMessage_DoubleRingOut
 	.word BigMessage_Draw
 
+# 80151BD4 [w] (0x5E4 offset into data003)
 D_80151BD4:
 	.word BigMessage_RopeBreak
 
