@@ -3316,30 +3316,38 @@ func3_800EF834:
 /* 0E9F44 800EF894 27BD0018 */   addiu $sp, $sp, 0x18
 
 /*----------------------------------------------------------------------------*/
+# Starts the referee two-count animation and, if the big-message channel is
+# free, queues the TWO COUNT big-message script.  This has the same gating
+# pattern as func3_800EF834: never replace an active big-message script, and
+# skip message install while the overlay is globally suppressed.
 func3_800EF898:
 /* 0E9F48 800EF898 27BDFFE8 */  addiu $sp, $sp, -0x18
-/* 0E9F4C 800EF89C 24040002 */  li    $a0, 2
+/* 0E9F4C 800EF89C 24040002 */  li    $a0, 2 # referee state: two-count
 /* 0E9F50 800EF8A0 AFBF0010 */  sw    $ra, 0x10($sp)
 /* 0E9F54 800EF8A4 0C03BDA6 */  jal   func3_800EF698
 /* 0E9F58 800EF8A8 00002821 */   addu  $a1, $zero, $zero
 
+# If another big-message script is already running, leave it alone.
 /* 0E9F5C 800EF8AC 3C028016 */  lui   $v0, %hi(bss3_8015D780) # $v0, 0x8016
 /* 0E9F60 800EF8B0 8C42D780 */  lw    $v0, %lo(bss3_8015D780)($v0)
 /* 0E9F64 800EF8B4 1440000E */  bnez  $v0, .L3_800EF8F0
 /* 0E9F68 800EF8B8 00000000 */   nop   
 
+# Respect global overlay suppression before queuing the message script.
 /* 0E9F6C 800EF8BC 0C050AE8 */  jal   func3_80142BA0
 /* 0E9F70 800EF8C0 00000000 */   nop   
 
 /* 0E9F74 800EF8C4 1440000A */  bnez  $v0, .L3_800EF8F0
 /* 0E9F78 800EF8C8 00000000 */   nop   
 
+# Re-check the message channel, then load the TWO COUNT script pointer.
 /* 0E9F7C 800EF8CC 3C028016 */  lui   $v0, %hi(bss3_8015D780) # $v0, 0x8016
 /* 0E9F80 800EF8D0 8C42D780 */  lw    $v0, %lo(bss3_8015D780)($v0)
 /* 0E9F84 800EF8D4 3C038015 */  lui   $v1, %hi(D_80151BD8) # $v1, 0x8015
 /* 0E9F88 800EF8D8 14400005 */  bnez  $v0, .L3_800EF8F0
 /* 0E9F8C 800EF8DC 8C631BD8 */   lw    $v1, %lo(D_80151BD8)($v1)
 
+# Install the script and reset its aux offset/timer.
 /* 0E9F90 800EF8E0 3C018016 */  lui   $at, %hi(bss3_8015D780) # $at, 0x8016
 /* 0E9F94 800EF8E4 AC23D780 */  sw    $v1, %lo(bss3_8015D780)($at)
 /* 0E9F98 800EF8E8 3C018016 */  lui   $at, %hi(bss3_8015D784) # $at, 0x8016
@@ -135977,6 +135985,7 @@ ptrTbl_BigMessages2:
 D_80151BD4:
 	.word BigMessage_RopeBreak
 
+# 80151BD8 [w] (0x5E8 offset into data003)
 D_80151BD8:
 	.word BigMessage_TwoCount
 
