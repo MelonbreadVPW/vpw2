@@ -4277,10 +4277,14 @@ func3_800F0054:
 /* 0EA9D8 800F0328 27BD0048 */   addiu $sp, $sp, 0x48
 
 /*----------------------------------------------------------------------------*/
+# Tears down/resets match scene state.  Clears per-slot wrestler objects/flags,
+# destroys the shared overlay object, runs stage/system shutdown hooks, then
+# falls through the final cleanup label at func3_800F03A0.
 func3_800F032C:
 /* 0EA9DC 800F032C 27BDFFE0 */  addiu $sp, $sp, -0x20
 /* 0EA9E0 800F0330 AFBF0018 */  sw    $ra, 0x18($sp)
 /* 0EA9E4 800F0334 AFB10014 */  sw    $s1, 0x14($sp)
+# Reset/free the scene graph before clearing participant slots.
 /* 0EA9E8 800F0338 0C000CDD */  jal   func_80003374
 /* 0EA9EC 800F033C AFB00010 */   sw    $s0, 0x10($sp)
 
@@ -4289,6 +4293,7 @@ func3_800F032C:
 /* 0EA9F8 800F0348 26315124 */  addiu $s1, %lo(bss3_80175124) # addiu $s1, $s1, 0x5124
 
 .L3_800F034C:
+# Clear all four wrestler objects and their per-slot update flags.
 /* 0EA9FC 800F034C 00102400 */  sll   $a0, $s0, 0x10
 /* 0EAA00 800F0350 0C0052AB */  jal   func_80014AAC
 /* 0EAA04 800F0354 00042403 */   sra   $a0, $a0, 0x10
@@ -4301,6 +4306,7 @@ func3_800F032C:
 /* 0EAA1C 800F036C 1440FFF7 */  bnez  $v0, .L3_800F034C
 /* 0EAA20 800F0370 26310002 */   addiu $s1, $s1, 2
 
+# Run global scene/stage shutdown hooks and destroy the shared overlay object.
 /* 0EAA24 800F0374 0C00862B */  jal   func_800218AC
 /* 0EAA28 800F0378 00000000 */   nop   
 
@@ -4317,6 +4323,7 @@ func3_800F032C:
 /* 0EAA48 800F0398 0C00813F */  jal   func_800204FC
 /* 0EAA4C 800F039C 00000000 */   nop  
  
+# Final cleanup continuation; no separate prologue from func3_800F032C.
 func3_800F03A0:
 /* 0EAA50 800F03A0 0C0046AA */  jal   func_80011AA8
 /* 0EAA54 800F03A4 00000000 */   nop   
@@ -4333,7 +4340,7 @@ func3_800F03A0:
 /* 0EAA70 800F03C0 0C005BF3 */  jal   func_80016FCC
 /* 0EAA74 800F03C4 00000000 */   nop   
 
-# disable monochrome mode
+# Disable monochrome mode on teardown.
 /* 0EAA78 800F03C8 3C018004 */  lui   $at, %hi(var_8003FDB0) # $at, 0x8004
 /* 0EAA7C 800F03CC A420FDB0 */  sh    $zero, %lo(var_8003FDB0)($at)
 /* 0EAA80 800F03D0 8FBF0018 */  lw    $ra, 0x18($sp)
