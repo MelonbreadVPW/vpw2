@@ -4482,6 +4482,7 @@ func3_800F04B0:
 /* 0EABC8 800F0518 27BD0018 */   addiu $sp, $sp, 0x18
 
 /*----------------------------------------------------------------------------*/
+# Returns the current derived index stored by func3_800F04B0 in bss3_8015D960.
 func3_800F051C:
 /* 0EABCC 800F051C 3C028016 */  lui   $v0, %hi(bss3_8015D960)
 /* 0EABD0 800F0520 03E00008 */  jr    $ra
@@ -4489,9 +4490,14 @@ func3_800F051C:
 
 /*----------------------------------------------------------------------------*/
 # Params:
-# $a0 -
-
+# $a0 - update mode/phase flag from func3_800F0054; nonzero skips the
+#       final queued-command dispatch and proceeds to camera scalar smoothing.
+#
+# Processes the queued focus/event word in bss3_8016C012.  It builds a temporary
+# active-participant list, lets focus helpers update per-slot flags, dispatches
+# camera/focus commands in mode 0, and eases bss3_8015D90C toward bss3_8015D908.
 func3_800F0528:
+# Read the queued focus/event word.
 /* 0EABD8 800F0528 3C058017 */  lui   $a1, %hi(bss3_8016C012) # $a1, 0x8017
 /* 0EABDC 800F052C 94A5C012 */  lhu   $a1, %lo(bss3_8016C012)($a1)
 /* 0EABE0 800F0530 27BDFFB8 */  addiu $sp, $sp, -0x48
@@ -4510,6 +4516,7 @@ func3_800F0528:
 /* 0EAC14 800F0564 14620007 */  bne   $v1, $v0, .L3_800F0584
 /* 0EAC18 800F0568 24120004 */   li    $s2, 4
 
+# -1 is a reset sentinel: clear the queue and mark no pending event.
 /* 0EAC1C 800F056C 3C018017 */  lui   $at, %hi(bss3_8016C012) # $at, 0x8017
 /* 0EAC20 800F0570 A420C012 */  sh    $zero, %lo(bss3_8016C012)($at)
 /* 0EAC24 800F0574 3C018015 */  lui   $at, %hi(tbl_801520FC) # $at, 0x8015
@@ -4518,6 +4525,7 @@ func3_800F0528:
 /* 0EAC30 800F0580 00151400 */   sll   $v0, $s5, 0x10
 
 .L3_800F0584:
+# Any other queued word marks the event table active.
 /* 0EAC34 800F0584 24020001 */  li    $v0, 1
 /* 0EAC38 800F0588 3C018015 */  lui   $at, %hi(tbl_801520FC) # $at, 0x8015
 /* 0EAC3C 800F058C A42220FC */  sh    $v0, %lo(tbl_801520FC)($at)
@@ -4526,6 +4534,7 @@ func3_800F0528:
 /* 0EAC48 800F0598 14620008 */  bne   $v1, $v0, .L3_800F05BC
 /* 0EAC4C 800F059C 00008021 */   addu  $s0, $zero, $zero
 
+# Low command 0x21 uses the high byte as a participant selector.
 /* 0EAC50 800F05A0 00042603 */  sra   $a0, $a0, 0x18
 /* 0EAC54 800F05A4 2484FFFF */  addiu $a0, $a0, -1
 /* 0EAC58 800F05A8 00041040 */  sll   $v0, $a0, 1
@@ -4543,6 +4552,7 @@ func3_800F0528:
 /* 0EAC80 800F05D0 27A50010 */  addiu $a1, $sp, 0x10
 
 .L3_800F05D4:
+# Build stack-local participant list and copy active positions into scratch.
 /* 0EAC84 800F05D4 A4B00000 */  sh    $s0, ($a1)
 /* 0EAC88 800F05D8 84C20000 */  lh    $v0, ($a2)
 /* 0EAC8C 800F05DC 0442000F */  bltzl $v0, .L3_800F061C
@@ -4571,6 +4581,7 @@ func3_800F0528:
 /* 0EACDC 800F062C 1440FFE9 */  bnez  $v0, .L3_800F05D4
 /* 0EACE0 800F0630 24A50002 */   addiu $a1, $a1, 2
 
+# Query focus mask and, for non-tag matches, compact it into the local list.
 /* 0EACE4 800F0634 0C04A132 */  jal   func3_801284C8
 /* 0EACE8 800F0638 00000000 */   nop   
 
@@ -4619,6 +4630,7 @@ func3_800F0528:
 /* 0EAD6C 800F06BC 27B10010 */  addiu $s1, $sp, 0x10
 
 .L3_800F06C0:
+# Process each selected participant if it also matches the current player focus.
 /* 0EAD70 800F06C0 96240000 */  lhu   $a0, ($s1)
 /* 0EAD74 800F06C4 00931007 */  srav  $v0, $s3, $a0
 /* 0EAD78 800F06C8 30420001 */  andi  $v0, $v0, 1
@@ -4633,6 +4645,7 @@ func3_800F0528:
 /* 0EAD94 800F06E4 50400020 */  beql  $v0, $zero, .L3_800F0768
 /* 0EAD98 800F06E8 26100001 */   addiu $s0, $s0, 1
 
+# Derive/possibly enqueue a new focus command for this participant.
 /* 0EAD9C 800F06EC 86240000 */  lh    $a0, ($s1)
 /* 0EADA0 800F06F0 0C0045C3 */  jal   func_8001170C
 /* 0EADA4 800F06F4 00000000 */   nop   
@@ -4680,6 +4693,7 @@ func3_800F0528:
 /* 0EAE24 800F0774 00151400 */  sll   $v0, $s5, 0x10
 
 .L3_800F0778:
+# In mode 0, dispatch the queued focus command to the appropriate handler.
 /* 0EAE28 800F0778 14400037 */  bnez  $v0, .L3_800F0858
 /* 0EAE2C 800F077C 00000000 */   nop   
 
@@ -4699,6 +4713,8 @@ func3_800F0528:
 /* 0EAE5C 800F07AC 10400006 */  beqz  $v0, .L3_800F07C8
 /* 0EAE60 800F07B0 00000000 */   nop   
 
+# Command values below 0x20 and enough selected participants use camera focus
+# setup.
 /* 0EAE64 800F07B4 0C03C23A */  jal   func3_800F08E8
 /* 0EAE68 800F07B8 00000000 */   nop   
 
@@ -4721,6 +4737,7 @@ func3_800F0528:
 /* 0EAE9C 800F07EC 00042400 */  sll   $a0, $a0, 0x10
 
 .L3_800F07F0:
+# Dispatch normal low-number focus commands.
 /* 0EAEA0 800F07F0 00042403 */  sra   $a0, $a0, 0x10
 /* 0EAEA4 800F07F4 0C03C469 */  jal   func3_800F11A4
 /* 0EAEA8 800F07F8 27A50010 */   addiu $a1, $sp, 0x10
@@ -4733,6 +4750,7 @@ func3_800F0528:
 /* 0EAEBC 800F080C A420D790 */   sh    $zero, %lo(bss3_8015D790)($at)
 
 .L3_800F0810:
+# Commands with bits 0x700 set take the alternate handler and set a lock flag.
 /* 0EAEC0 800F0810 3C028016 */  lui   $v0, %hi(bss3_8015D790) # $v0, 0x8016
 /* 0EAEC4 800F0814 8442D790 */  lh    $v0, %lo(bss3_8015D790)($v0)
 /* 0EAEC8 800F0818 14400003 */  bnez  $v0, .L3_800F0828
@@ -4759,6 +4777,7 @@ func3_800F0528:
 /* 0EAF04 800F0854 AC20D908 */  sw    $zero, %lo(bss3_8015D908)($at)
 
 .L3_800F0858:
+# Smooth current camera scalar toward target scalar.
 /* 0EAF08 800F0858 3C018016 */  lui   $at, %hi(bss3_8015D908) # $at, 0x8016
 /* 0EAF0C 800F085C C420D908 */  lwc1  $f0, %lo(bss3_8015D908)($at)
 /* 0EAF10 800F0860 3C018016 */  lui   $at, %hi(bss3_8015D90C) # $at, 0x8016
@@ -4802,6 +4821,10 @@ func3_800F0528:
 /* 0EAF94 800F08E4 27BD0048 */   addiu $sp, $sp, 0x48
 
 /*----------------------------------------------------------------------------*/
+# Computes camera framing from the currently selected/focused participants.
+# Builds a mask of participants to frame, scans their scratch positions for X/Z
+# bounds and average height, derives camera center/radius/height values, then
+# applies safety/fallback rules before writing the global camera target values.
 func3_800F08E8:
 /* 0EAF98 800F08E8 27BDFFB0 */  addiu $sp, $sp, -0x50
 /* 0EAF9C 800F08EC AFBF0018 */  sw    $ra, 0x18($sp)
@@ -4813,11 +4836,13 @@ func3_800F08E8:
 /* 0EAFB4 800F0904 F7B80030 */  sdc1  $f24, 0x30($sp)
 /* 0EAFB8 800F0908 F7B60028 */  sdc1  $f22, 0x28($sp)
 /* 0EAFBC 800F090C F7B40020 */  sdc1  $f20, 0x20($sp)
+# Start from the current focus/selection mask.
 /* 0EAFC0 800F0910 0C04A132 */  jal   func3_801284C8
 /* 0EAFC4 800F0914 00008821 */   addu  $s1, $zero, $zero
 
 /* 0EAFC8 800F0918 3C03800A */  lui   $v1, %hi(bssMain_800980A0) # $v1, 0x800a
 /* 0EAFCC 800F091C 8C6380A0 */  lw    $v1, %lo(bssMain_800980A0)($v1)
+# Non-battle-royal modes invert/shift the mask into the participant bit range.
 /* 0EAFD0 800F0920 30630400 */  andi  $v1, $v1, 0x400 # battle royal match bit
 /* 0EAFD4 800F0924 14600004 */  bnez  $v1, .L3_800F0938
 /* 0EAFD8 800F0928 00408021 */   addu  $s0, $v0, $zero
@@ -4841,6 +4866,7 @@ func3_800F08E8:
 /* 0EB014 800F0964 4600B706 */  mov.s $f28, $f22
 
 .L3_800F0968:
+# Scan selected active participants and accumulate X/Z bounds plus height sum.
 /* 0EB018 800F0968 84A20000 */  lh    $v0, ($a1)
 /* 0EB01C 800F096C 0440002A */  bltz  $v0, .L3_800F0A18
 /* 0EB020 800F0970 00871007 */   srav  $v0, $a3, $a0
@@ -4908,6 +4934,7 @@ func3_800F08E8:
 /* 0EB0D4 800F0A24 1440FFD0 */  bnez  $v0, .L3_800F0968
 /* 0EB0D8 800F0A28 24A50002 */   addiu $a1, $a1, 2
 
+# Convert bounds into midpoint/radius-style camera framing values.
 /* 0EB0DC 800F0A2C 46066080 */  add.s $f2, $f12, $f6
 /* 0EB0E0 800F0A30 3C018015 */  lui   $at, %hi(D_801548F8)
 /* 0EB0E4 800F0A34 D42448F8 */  ldc1  $f4, %lo(D_801548F8)($at)
@@ -4935,6 +4962,7 @@ func3_800F08E8:
 /* 0EB138 800F0A88 0C001125 */  jal   func_80004494
 /* 0EB13C 800F0A8C 46200520 */   cvt.s.d $f20, $f0
 
+# Continuation: clamp/scale derived radius and handle close-up fallback cases.
 func3_800F0A90:
 /* 0EB140 800F0A90 4614003C */  c.lt.s $f0, $f20
 /* 0EB144 800F0A94 00000000 */  nop   
@@ -4966,6 +4994,7 @@ func3_800F0A90:
 /* 0EB19C 800F0AEC 45000007 */  bc1f  .L3_800F0B0C
 /* 0EB1A0 800F0AF0 00000000 */   nop
 
+# Very small framing boxes fall back to neutral defaults.
 /* 0EB1A4 800F0AF4 3C014316 */  li    $at, 0x43160000 # 150.000000
 /* 0EB1A8 800F0AF8 4481E000 */  mtc1  $at, $f28
 /* 0EB1AC 800F0AFC 4480F000 */  mtc1  $zero, $f30
@@ -4974,6 +5003,7 @@ func3_800F0A90:
 /* 0EB1B8 800F0B08 4600F686 */  mov.s $f26, $f30
 
 .L3_800F0B0C:
+# Smooth the camera distance/zoom scalar before deriving final offsets.
 /* 0EB1BC 800F0B0C 3C018016 */  lui   $at, %hi(bss3_8015D910) # $at, 0x8016
 /* 0EB1C0 800F0B10 C422D910 */  lwc1  $f2, %lo(bss3_8015D910)($at)
 /* 0EB1C4 800F0B14 460C1001 */  sub.s $f0, $f2, $f12
@@ -5063,6 +5093,7 @@ func3_800F0A90:
 /* 0EB2E8 800F0C38 4500000A */  bc1f  .L3_800F0C64
 /* 0EB2EC 800F0C3C 00000000 */   nop
 
+# Continuation for additional participant-distance checks.
 func3_800F0C40:
 /* 0EB2F0 800F0C40 3C018016 */  lui   $at, %hi(bss3_8015D7E0) # $at, 0x8016
 /* 0EB2F4 800F0C44 C420D7E0 */  lwc1  $f0, %lo(bss3_8015D7E0)($at)
