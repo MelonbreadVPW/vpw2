@@ -9095,6 +9095,10 @@ func3_800F3A00:
 # $a0 - pointer to ?
 
 func3_800F3E88:
+# Broad action 0x00: pre-match/no-control setup. On subtype 0 it installs the
+# neutral standing/apron idle animation, refreshes mask/ring-post bits, then
+# advances the subtype. On subtype 1 it waits for the global start flag before
+# handing the wrestler to normal idle/walk broad action 0x01.
 /* 0EE538 800F3E88 27BDFFE8 */  addiu $sp, $sp, -0x18
 /* 0EE53C 800F3E8C AFB00010 */  sw    $s0, 0x10($sp)
 /* 0EE540 800F3E90 00808021 */  addu  $s0, $a0, $zero
@@ -9180,6 +9184,10 @@ func3_800F3E88:
 # $a0 - pointer to ?
 
 func3_800F3F64:
+# Broad action 0x01: the main idle/walking dispatcher. This path keeps baseline
+# control flags set, handles taunt/apron/ring/outside transitions, battle royal
+# entrant and outside-loss cases, tag/lumberjack/rules gates, then falls into the
+# common idle maintenance/update chain below.
 /* 0EE614 800F3F64 27BDFFE0 */  addiu $sp, $sp, -0x20
 /* 0EE618 800F3F68 AFB00010 */  sw    $s0, 0x10($sp)
 /* 0EE61C 800F3F6C 00808021 */  addu  $s0, $a0, $zero
@@ -9413,6 +9421,9 @@ func3_800F3F64:
 /* 0EE8BC 800F420C 34630200 */  ori   $v1, (0x00010200 & 0xFFFF) # ori $v1, $v1, 0x200
 
 func3_800F4210:
+# Continuation inside broad action 0x01: match-rule gate for outside/apron cases.
+# If the relevant match option bits are set, route the wrestler into broad action
+# 0x87; otherwise continue with normal idle control/location handling.
 /* 0EE8C0 800F4210 00431024 */  and   $v0, $v0, $v1
 /* 0EE8C4 800F4214 10400006 */  beqz  $v0, .L3_800F4230
 /* 0EE8C8 800F4218 00000000 */   nop   
@@ -9517,6 +9528,10 @@ func3_800F4210:
 /* 0EE9E4 800F4334 2402FFFF */  li    $v0, -1
 
 func3_800F4338:
+# Common idle/walk maintenance continuation. It clears transient targets/timers,
+# runs shared movement/animation hooks, probes several context-specific handlers,
+# then either consumes an action from those hooks or falls back to normal movement
+# and player-control processing.
 /* 0EE9E8 800F4338 A4620038 */  sh    $v0, 0x38($v1)
 /* 0EE9EC 800F433C 8E04003C */  lw    $a0, 0x3c($s0)
 /* 0EE9F0 800F4340 9482005C */  lhu   $v0, 0x5c($a0) # general location
@@ -10683,6 +10698,10 @@ BroadAction_Leapfrog_Primary:
 /* 0EF6AC 800F4FFC 34820001 */   ori   $v0, $a0, 1
 
 func3_800F5000:
+# Continuation for broad action 0x1D (leapfrog/drop-down primary). During the
+# active animation window it marks the actor as evading, searches for the paired
+# running opponent, and can push that opponent into the secondary leapfrog/drop
+# broad action before returning both wrestlers to normal running/update handling.
 /* 0EF6B0 800F5000 A6020058 */  sh    $v0, 0x58($s0)
 /* 0EF6B4 800F5004 02002021 */  addu  $a0, $s0, $zero
 /* 0EF6B8 800F5008 00002821 */  addu  $a1, $zero, $zero
@@ -11553,6 +11572,10 @@ BroadAction_GrappleBreakup:
 /* 0F003C 800F598C 9602005C */  lhu   $v0, 0x5c($s0)
 
 func3_800F5990:
+# Broad action 0x33 (grapple breakup) body. It records the interrupted animation
+# kind, chooses a recovery/transition animation or follow-up broad action from
+# small pointer tables, and advances through subtype 0/1 until the wrestler can
+# return to idle, get-up, turnbuckle, or hit-stagger handling.
 /* 0F0040 800F5990 86030022 */  lh    $v1, 0x22($s0) # broad action sub-type
 /* 0F0044 800F5994 34420001 */  ori   $v0, $v0, 1
 /* 0F0048 800F5998 10600006 */  beqz  $v1, .L3_800F59B4
@@ -11689,6 +11712,9 @@ func3_800F5990:
 /* 0F0194 800F5AE4 02002021 */  addu  $a0, $s0, $zero
 
 func3_800F5AE8:
+# Grapple-breakup animation installer. Uses the animation ID selected above and
+# chooses immediate vs queued playback based on apron/location state, then advances
+# the breakup subtype.
 /* 0F0198 800F5AE8 00402821 */  addu  $a1, $v0, $zero
 /* 0F019C 800F5AEC 30C60010 */  andi  $a2, $a2, 0x10
 /* 0F01A0 800F5AF0 0C0502F0 */  jal   func3_80140BC0
@@ -11830,6 +11856,10 @@ func3_800F5AE8:
 # $a0 - Player map address
 
 func3_800F5C34:
+# Broad action 0x34: downed/on-ground state machine. Subtypes initialize wake-up
+# timers and lying animations, handle recoverability flags, route special ground
+# reactions (dizzy/get-up/top-rope avoidance), and enforce battle-royal outside-loss
+# state when a downed wrestler is out of the ring.
 /* 0F02E4 800F5C34 27BDFFE0 */  addiu $sp, $sp, -0x20
 /* 0F02E8 800F5C38 AFB10014 */  sw    $s1, 0x14($sp)
 /* 0F02EC 800F5C3C 00808821 */  addu  $s1, $a0, $zero
@@ -11893,6 +11923,9 @@ func3_800F5C34:
 /* 0F03A0 800F5CF0 96020058 */  lhu   $v0, 0x58($s0)
 
 func3_800F5CF4:
+# Downed-state setup continuation after subtype 0 initializes timers. It checks
+# whether the wrestler can begin recovery, toggles recoverability flags in 0x58/0x62,
+# then advances to the lying-animation/recovery subtypes.
 /* 0F03A4 800F5CF4 30420002 */  andi  $v0, $v0, 2
 /* 0F03A8 800F5CF8 14400021 */  bnez  $v0, .L3_800F5D80
 /* 0F03AC 800F5CFC 00000000 */   nop   
@@ -12266,6 +12299,10 @@ func3_800F5CF4:
 # $a0 - Player map address
 
 func3_800F60D8:
+# Broad action 0x35: standing/apron dizzy state. It applies standard dizzy movement
+# damping, installs slumped/standing dizzy animations on subtype 0, waits for the
+# animation/recovery gate on subtype 1, then plays undizzy animations or returns to
+# normal control on subtype 2.
 /* 0F0788 800F60D8 27BDFFE0 */  addiu $sp, $sp, -0x20
 /* 0F078C 800F60DC AFB10014 */  sw    $s1, 0x14($sp)
 /* 0F0790 800F60E0 00808821 */  addu  $s1, $a0, $zero
