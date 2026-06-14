@@ -12476,6 +12476,8 @@ func3_800F60D8:
 # Params:
 # $a0 - Player map address
 
+# Applies short hit-stun physics, plays a stagger/fall-recovery animation based on
+# subtype, and returns to normal control once the animation timer expires.
 func3_800F62B4:
 /* 0F0964 800F62B4 27BDFFE8 */  addiu $sp, $sp, -0x18
 /* 0F0968 800F62B8 AFB00010 */  sw    $s0, 0x10($sp)
@@ -12555,6 +12557,8 @@ func3_800F62B4:
 # Params:
 # $a0 - Player map address
 
+# Installs the larger stagger-back reaction, choosing the concrete animation from
+# hit/location flags and redirecting to corner/apron/ramp fall states when needed.
 func3_800F6384:
 /* 0F0A34 800F6384 27BDFFE0 */  addiu $sp, $sp, -0x20
 /* 0F0A38 800F6388 AFB20018 */  sw    $s2, 0x18($sp)
@@ -12984,11 +12988,13 @@ BroadAction_Blocking:
 /* 0F0EFC 800F684C 27BD0018 */   addiu $sp, $sp, 0x18
 
 /*----------------------------------------------------------------------------*/
-# [broad action 0x50]
+# [broad action 0x50] Block-stun / blocking transition
 
 # Params:
 # $a0 - Player map address
 
+# Short block-stun follow-up: plays guard reaction clips, waits for their timers,
+# then enters the generic blocking action with a fixed guard timer.
 func3_800F6850:
 /* 0F0F00 800F6850 27BDFFE8 */  addiu $sp, $sp, -0x18
 /* 0F0F04 800F6854 AFB00010 */  sw    $s0, 0x10($sp)
@@ -13117,6 +13123,8 @@ func3_800F6850:
 # Params:
 # $a0 - Player map address
 
+# Primary attacker side of a standing grapple move: sets throw-direction flags,
+# aligns the opponent, handles reversals/partner sync, then runs paired move logic.
 func3_800F69AC:
 /* 0F105C 800F69AC 27BDFFD8 */  addiu $sp, $sp, -0x28
 /* 0F1060 800F69B0 AFB1001C */  sw    $s1, 0x1c($sp)
@@ -13313,6 +13321,8 @@ func3_800F69AC:
 # Params:
 # $a0 - Player map address
 
+# Defender/receiver side of the same grapple move: mirrors alignment and throw
+# direction setup, then either follows paired move sync or falls into wake-up.
 func3_800F6BF4:
 /* 0F12A4 800F6BF4 27BDFFD8 */  addiu $sp, $sp, -0x28
 /* 0F12A8 800F6BF8 AFB1001C */  sw    $s1, 0x1c($sp)
@@ -13509,6 +13519,8 @@ func3_800F6BF4:
 # Params:
 # $a0 - Player map address
 
+# Attacker half of a catch/grapple against a running opponent: faces/aligned with
+# the target, starts the selected move animation, then runs movement follow-up.
 func3_800F6E48:
 /* 0F14F8 800F6E48 27BDFFE8 */  addiu $sp, $sp, -0x18
 /* 0F14FC 800F6E4C AFB00010 */  sw    $s0, 0x10($sp)
@@ -13568,6 +13580,8 @@ func3_800F6E48:
 # Params:
 # $a0 - Player map address
 
+# Receiver half of the running-opponent grapple: starts the mirrored target
+# animation, links the two actors, then keeps the receiver moving with the pair.
 func3_800F6EE4:
 /* 0F1594 800F6EE4 27BDFFE8 */  addiu $sp, $sp, -0x18
 /* 0F1598 800F6EE8 AFB00010 */  sw    $s0, 0x10($sp)
@@ -13631,6 +13645,8 @@ func3_800F6EE4:
 # Params:
 # $a0 - Player map address
 
+# Combo-grapple attacker path: waits out interrupt/reversal guards, claims paired
+# animation sync when the defender is ready, and advances the paired move state.
 func3_800F6F8C:
 /* 0F163C 800F6F8C 27BDFFE8 */  addiu $sp, $sp, -0x18
 /* 0F1640 800F6F90 AFB00010 */  sw    $s0, 0x10($sp)
@@ -13692,6 +13708,8 @@ func3_800F6F8C:
 # Params:
 # $a0 - Player map address
 
+# Combo-grapple receiver path: waits for the primary side's ready flag, installs
+# the matching animation/link state, and keeps the paired move in sync.
 func3_800F7030:
 /* 0F16E0 800F7030 27BDFFE8 */  addiu $sp, $sp, -0x18
 /* 0F16E4 800F7034 AFB00010 */  sw    $s0, 0x10($sp)
@@ -13745,6 +13763,8 @@ func3_800F7030:
 # Params:
 # $a0 - Player map address
 
+# Primary side of a reversal/test-of-strength result: records reversal carry-over
+# flags, runs paired damage/move setup, and advances while the partner is synced.
 func3_800F70C0:
 /* 0F1770 800F70C0 27BDFFE8 */  addiu $sp, $sp, -0x18
 /* 0F1774 800F70C4 AFB00010 */  sw    $s0, 0x10($sp)
