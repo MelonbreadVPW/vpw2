@@ -5424,6 +5424,10 @@ func3_800F0C40:
 /* 0EB72C 800F107C 3C018016 */  lui   $at, %hi(bss3_8015D940) # $at, 0x8016
 
 func3_800F1080:
+# Final camera-target smoothing/export block shared with func3_800F08E8.
+# It eases bss3_8015D928 toward the pending target bss3_8015D940, then mirrors the
+# live camera position/orientation globals into the render-facing D8E4/D8E8...
+# block, applying the same sign flips used by the transform-buffer helpers.
 /* 0EB730 800F1080 C422D940 */  lwc1  $f2, %lo(bss3_8015D940)($at)
 /* 0EB734 800F1084 46020001 */  sub.s $f0, $f0, $f2
 /* 0EB738 800F1088 3C018015 */  lui   $at, %hi(D_80154980)
@@ -5500,6 +5504,8 @@ func3_800F1080:
 /* 0EB83C 800F118C D7BA0038 */  ldc1  $f26, 0x38($sp)
 
 func3_800F1190:
+# Epilogue label for the camera-target helper above. Kept as a func label by the
+# disassembly, but it is only the callee-saved floating-point restore/return path.
 /* 0EB840 800F1190 D7B80030 */  ldc1  $f24, 0x30($sp)
 /* 0EB844 800F1194 D7B60028 */  ldc1  $f22, 0x28($sp)
 /* 0EB848 800F1198 D7B40020 */  ldc1  $f20, 0x20($sp)
@@ -7225,6 +7231,11 @@ L3_800F1D54:
 # $a1 -
 
 func3_800F270C:
+# Alternate camera framing/update path used by func3_800F0054. $a0 encodes a camera
+# mode/focus selector in its low bits plus flags (0x40 forces mode refresh); $a1
+# points at a two-entry participant pair. The routine blends between a supplied
+# focus anchor, the pair midpoint, and mode-specific orbit/angle presets, then
+# smooths the global camera target block before exporting render-facing values.
 /* 0ECDBC 800F270C 27BDFFA0 */  addiu $sp, $sp, -0x60
 /* 0ECDC0 800F2710 AFB1001C */  sw    $s1, 0x1c($sp)
 /* 0ECDC4 800F2714 00A08821 */  addu  $s1, $a1, $zero
@@ -7268,6 +7279,8 @@ func3_800F270C:
 /* 0ECE50 800F27A0 4600B786 */  mov.s $f30, $f22
 
 .L3_800F27A4:
+# For selectors 1..4, seed the target from the cached participant position table;
+# otherwise start from the origin and let later mode logic choose the camera anchor.
 /* 0ECE54 800F27A4 3C028017 */  lui   $v0, %hi(bss3_8016C010) # $v0, 0x8017
 /* 0ECE58 800F27A8 8442C010 */  lh    $v0, %lo(bss3_8016C010)($v0)
 /* 0ECE5C 800F27AC 2A430020 */  slti  $v1, $s2, 0x20
@@ -7300,6 +7313,7 @@ func3_800F270C:
 /* 0ECEC4 800F2814 46021082 */  mul.s $f2, $f2, $f2
 /* 0ECEC8 800F2818 46006301 */  sub.s $f12, $f12, $f0
 /* 0ECECC 800F281C 460C6302 */  mul.s $f12, $f12, $f12
+# Measure the pair's horizontal X/Z distance and cap the blend radius at 200.
 /* 0ECED0 800F2820 0C00C2A0 */  jal   sqrtf
 /* 0ECED4 800F2824 460C1300 */   add.s $f12, $f2, $f12
 
@@ -7432,6 +7446,8 @@ func3_800F270C:
 /* 0ED094 800F29E4 00000000 */   nop   
 
 .L3_800F29E8:
+# Camera selector changed, or the caller forced a refresh: store the new selector
+# and normalize special selector values through small random/preset buckets.
 /* 0ED098 800F29E8 02401021 */  addu  $v0, $s2, $zero
 /* 0ED09C 800F29EC 3843001A */  xori  $v1, $v0, 0x1a
 /* 0ED0A0 800F29F0 2C630001 */  sltiu $v1, $v1, 1
@@ -8082,6 +8098,10 @@ func3_800F270C:
 /* 0ED8E8 800F3238 00000000 */   nop   
 
 func3_800F323C:
+# Continuation of func3_800F270C after sampling the current camera mode.
+# It eases the orbit angle toward bss3_8015D798 unless forced, applies ring/outside
+# boundary checks for the two focused participants, then converts the final angle
+# into pending camera X/Z offsets with fsin/fcos.
 /* 0ED8EC 800F323C 00021400 */  sll   $v0, $v0, 0x10
 /* 0ED8F0 800F3240 00021403 */  sra   $v0, $v0, 0x10
 /* 0ED8F4 800F3244 24030004 */  li    $v1, 4
@@ -8303,6 +8323,8 @@ func3_800F323C:
 /* 0EDBC0 800F3510 00000000 */  nop   
 
 .L3_800F3514:
+# Convert the chosen orbit angle/radius into pending target coordinates. The
+# bss3_8015D92C..D940 block holds the desired camera state before smoothing.
 /* 0EDBC4 800F3514 0C00C820 */  jal   fsin
 /* 0EDBC8 800F3518 4600A306 */   mov.s $f12, $f20
 
@@ -8503,6 +8525,8 @@ func3_800F323C:
 /* 0EDE50 800F37A0 00000000 */   nop
 
 func3_800F37A4:
+# Continuation label inside func3_800F270C: ease the live distance component
+# bss3_8015D928 toward its pending target bss3_8015D940.
 /* 0EDE54 800F37A4 3C018016 */  lui   $at, %hi(bss3_8015D928) # $at, 0x8016
 /* 0EDE58 800F37A8 C420D928 */  lwc1  $f0, %lo(bss3_8015D928)($at)
 /* 0EDE5C 800F37AC 46160001 */  sub.s $f0, $f0, $f22
@@ -8591,6 +8615,9 @@ func3_800F37A4:
 # $a0 -
 
 func3_800F38D4:
+# Fade-in helper for the small overlay/color buffer at bss3_8015D808.
+# Increments alpha bss3_8015D802 by 8 up to 0xff, writes RGBA via func_8000FCC8,
+# clears bit 0x80 on the associated object flags, and returns whether work ran.
 /* 0EDF84 800F38D4 27BDFFD8 */  addiu $sp, $sp, -0x28
 /* 0EDF88 800F38D8 00804021 */  addu  $t0, $a0, $zero
 /* 0EDF8C 800F38DC 3C028016 */  lui   $v0, %hi(bss3_8015D802) # $v0, 0x8016
@@ -8647,6 +8674,9 @@ func3_800F38D4:
 # $a0 -
 
 func3_800F3978:
+# Fade-out helper paired with func3_800F38D4. Once alpha is low enough it sets
+# bit 0x80 on the associated object flags; otherwise it decrements alpha by 8 and
+# rewrites the bss3_8015D808 color using the caller-supplied RGB values.
 /* 0EE028 800F3978 27BDFFD8 */  addiu $sp, $sp, -0x28
 /* 0EE02C 800F397C 00804021 */  addu  $t0, $a0, $zero
 /* 0EE030 800F3980 3C028016 */  lui   $v0, %hi(bss3_8015D802) # $v0, 0x8016
@@ -8692,7 +8722,11 @@ func3_800F3978:
 /*============================================================================*/
 /* --- file break --- */
 
-# Runs a broad action routine (and probably does other things)
+# Builds the per-player broad-action context and dispatches the current broad action.
+# The context at bss3_8015D970 caches the current player, related target/opponent
+# pointers, selected status flags from bss3_8016C080/C450, and scratch outputs used
+# by the broad-action routines. After common per-frame maintenance it indexes
+# ptrTbl_BroadActionRoutines by player->0x20 and tail-calls that action handler.
 
 # Params:
 # $a0 - player number
@@ -8771,6 +8805,8 @@ func3_800F3A00:
 /* 0EE1A0 800F3AF0 00021080 */  sll   $v0, $v0, 2
 /* 0EE1A4 800F3AF4 00491021 */  addu  $v0, $v0, $t1
 /* 0EE1A8 800F3AF8 3C018016 */  lui   $at, %hi(bss3_8015D9AC) # $at, 0x8016
+# Cache player-map pointers for current player, focus target, invalid/previous
+# target, and adjacent target slots so later action code can use one compact context.
 /* 0EE1AC 800F3AFC AC25D9AC */  sw    $a1, %lo(bss3_8015D9AC)($at)
 /* 0EE1B0 800F3B00 3C018016 */  lui   $at, %hi(bss3_8015D9B8) # $at, 0x8016
 /* 0EE1B4 800F3B04 AC22D9B8 */  sw    $v0, %lo(bss3_8015D9B8)($at)
@@ -8911,6 +8947,8 @@ func3_800F3A00:
 /* 0EE374 800F3CC4 A4620062 */  sh    $v0, 0x62($v1)
 
 /* 0EE378 800F3CC8 3C028016 */  lui   $v0, %hi(bss3_8015D9AC) # $v0, 0x8016
+# Clear transient action/animation/control flags before running the shared update
+# hooks and the broad-action-specific state machine.
 /* 0EE37C 800F3CCC 8C42D9AC */  lw    $v0, %lo(bss3_8015D9AC)($v0)
 /* 0EE380 800F3CD0 A040006D */  sb    $zero, 0x6d($v0)
 
